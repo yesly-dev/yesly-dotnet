@@ -2,8 +2,7 @@
 
 The official .NET library for the Yesly API.
 
-> Status: 0.1.0, not published yet. Covers API version `2026-10-01`. How to
-> publish it: [docs/publishing.md](docs/publishing.md).
+> Status: 0.1.0, not published yet. Covers API version `2026-10-01`.
 
 ## Install
 
@@ -116,11 +115,10 @@ node ../yesly-openapi/sdk/generate.mjs dotnet .
 Smoke test against the real API with a test key:
 
 ```bash
-YESLY_API_KEY=ysk_test_… YESLY_BASE_URL=https://api.dev.yesly.dev/v1 dotnet run scripts/smoke.cs
+YESLY_API_KEY=ysk_test_… dotnet run scripts/smoke.cs
 ```
 
 ## Releasing
 
 Bump `<Version>` in `src/Yesly/Yesly.csproj` and `YeslyVersion.Current`, then
-push a tag `v<version>`. First-time registration on NuGet:
-[docs/publishing.md](docs/publishing.md).
+push a tag `v<version>`.

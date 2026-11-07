@@ -1,5 +1,5 @@
 # Publishes to NuGet when a tag such as v0.1.0 is pushed. Uses NuGet trusted
-# publishing (OIDC), so no API key is stored: see docs/publishing.md.
+# publishing (OIDC), so no API key is stored.
 name: Release
 
 on:

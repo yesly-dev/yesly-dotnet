@@ -1,6 +1,6 @@
 // Calls the real API with a test key: one call per resource, then cleans up.
 //
-//   YESLY_API_KEY=ysk_test_… YESLY_BASE_URL=https://api.dev.yesly.dev/v1 dotnet run scripts/smoke.cs
+//   YESLY_API_KEY=ysk_test_… dotnet run scripts/smoke.cs
 #:project ../src/Yesly/Yesly.csproj
 
 using Yesly;
