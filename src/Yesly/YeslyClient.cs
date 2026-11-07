@@ -22,7 +22,8 @@ public sealed partial class YeslyClient
 
     internal static JsonTypeInfo<T> TypeInfo<T>() => (JsonTypeInfo<T>)JsonOptions.GetTypeInfo(typeof(T));
 
-    private static readonly HttpClient SharedHttp = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
+    /// <summary>Does not follow redirects, so the API key is never sent to another URL.</summary>
+    private static readonly HttpClient SharedHttp = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
     private readonly string? _apiKey;
     private readonly HttpClient _http;
@@ -35,7 +36,7 @@ public sealed partial class YeslyClient
     public YeslyClient(YeslyClientOptions options)
     {
         _apiKey = options.ApiKey ?? Env("YESLY_API_KEY");
-        BaseUrl = (options.BaseUrl ?? Env("YESLY_BASE_URL") ?? Yesly.ApiVersion.BaseUrl).TrimEnd('/');
+        BaseUrl = CheckBaseUrl((options.BaseUrl ?? Env("YESLY_BASE_URL") ?? Yesly.ApiVersion.BaseUrl).TrimEnd('/'));
         ApiVersion = options.ApiVersion ?? Yesly.ApiVersion.Current;
         Timeout = options.Timeout;
         MaxRetries = options.MaxRetries;
@@ -196,6 +197,15 @@ public sealed partial class YeslyClient
     {
         var b = Math.Min(0.5 * Math.Pow(2, attempt), 8.0);
         return TimeSpan.FromSeconds(b / 2 + Random.Shared.NextDouble() * b / 2);
+    }
+
+    /// <summary>The API key goes in every request, so the base URL must be HTTPS; plain HTTP only to this machine.</summary>
+    private static string CheckBaseUrl(string baseUrl)
+    {
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri)) throw new YeslyException("The base URL is not a valid URL.");
+        if (uri.Scheme == Uri.UriSchemeHttps) return baseUrl;
+        if (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback) return baseUrl;
+        throw new YeslyException("The base URL must use https:// (http:// is only allowed for localhost).");
     }
 
     private static string? Env(string name)

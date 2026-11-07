@@ -142,4 +142,13 @@ public class ClientTests
             Assert.Contains("No API key", e.Message);
         }
     }
+
+    [Fact]
+    public void BaseUrlMustBeHttpsExceptForLocalhost()
+    {
+        foreach (var url in new[] { "http://localhost:4010", "http://127.0.0.1:4010/v1", "http://[::1]:4010" })
+            Assert.Equal(url, new YeslyClient(new YeslyClientOptions { ApiKey = "ysk_test_1", BaseUrl = url }).BaseUrl);
+        var e = Assert.Throws<YeslyException>(() => new YeslyClient(new YeslyClientOptions { ApiKey = "ysk_test_1", BaseUrl = "http://api.yesly.dev/v1" }));
+        Assert.Contains("must use https", e.Message);
+    }
 }

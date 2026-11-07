@@ -9,7 +9,7 @@ public sealed class YeslyClientOptions
     /// <summary>Defaults to the <c>YESLY_API_KEY</c> environment variable.</summary>
     public string? ApiKey { get; set; }
 
-    /// <summary>Defaults to <c>https://api.yesly.dev/v1</c>, or <c>YESLY_BASE_URL</c> when set.</summary>
+    /// <summary>Defaults to <c>https://api.yesly.dev/v1</c>, or <c>YESLY_BASE_URL</c> when set. Must be HTTPS, except for localhost.</summary>
     public string? BaseUrl { get; set; }
 
     /// <summary><c>Yesly-Version</c>. Defaults to the version this library was generated for.</summary>
