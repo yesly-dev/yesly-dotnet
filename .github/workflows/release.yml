@@ -1,0 +1,30 @@
+# Publishes to NuGet when a tag such as v0.1.0 is pushed. Uses NuGet trusted
+# publishing (OIDC), so no API key is stored: see docs/publishing.md.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: nuget
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Check the tag matches Yesly.csproj
+        run: test "v$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Yesly/Yesly.csproj)" = "$GITHUB_REF_NAME"
+      - run: dotnet test
+      - run: dotnet pack src/Yesly -c Release -o artifacts
+      - uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json

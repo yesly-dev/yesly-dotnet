@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Yesly/Yesly.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Yesly.Tests/Yesly.Tests.csproj" />
+  </Folder>
+</Solution>
