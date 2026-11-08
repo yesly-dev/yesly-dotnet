@@ -585,6 +585,19 @@ public sealed class SlotList
     public List<Slot>? Data { get; set; }
 }
 
+/// <summary>When the first message goes out for appointments of a type: `days_before` and `at` ("the day before at 10:00", `0` for the same day), or `hours_before` (same-day services: "3 hours before"). Moved into your contact hours when it falls outside them.</summary>
+public sealed class FirstContact
+{
+    [JsonPropertyName("days_before")]
+    public long? DaysBefore { get; set; }
+
+    [JsonPropertyName("at")]
+    public string? At { get; set; }
+
+    [JsonPropertyName("hours_before")]
+    public long? HoursBefore { get; set; }
+}
+
 /// <summary>What an appointment is. Sets how the time is shown and the instructions added to the message.</summary>
 public sealed class AppointmentType
 {
@@ -619,6 +632,10 @@ public sealed class AppointmentType
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
+    /// <summary>When the first message goes out for this type, or `null` to use your account's setting.</summary>
+    [JsonPropertyName("first_contact")]
+    public FirstContact? FirstContact { get; set; }
+
     [JsonPropertyName("created")]
     public string? Created { get; set; }
 }
@@ -651,6 +668,10 @@ public sealed class AppointmentTypeCreate
 
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
+
+    /// <summary>Its own first message. Leave it out (or `null`) to use your account's setting.</summary>
+    [JsonPropertyName("first_contact")]
+    public FirstContact? FirstContact { get; set; }
 }
 
 public sealed class AppointmentTypeUpdate
@@ -670,6 +691,10 @@ public sealed class AppointmentTypeUpdate
     /// <summary>Whether the customer may ask for another date.</summary>
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
+
+    /// <summary>Its own first message; `null` goes back to your account's setting.</summary>
+    [JsonPropertyName("first_contact")]
+    public FirstContact? FirstContact { get; set; }
 }
 
 /// <summary>A page of a list. Keep paginating with `starting_after` while `has_more` is `true`.</summary>
@@ -1647,6 +1672,10 @@ public sealed class AppointmentTypeCreateOptions
 
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
+
+    /// <summary>Its own first message. Leave it out (or `null`) to use your account's setting.</summary>
+    [JsonPropertyName("first_contact")]
+    public FirstContact? FirstContact { get; set; }
 }
 
 /// <summary>Parameters of `PATCH /appointment_types/{id}`.</summary>
@@ -1667,6 +1696,10 @@ public sealed class AppointmentTypeUpdateOptions
     /// <summary>Whether the customer may ask for another date.</summary>
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
+
+    /// <summary>Its own first message; `null` goes back to your account's setting.</summary>
+    [JsonPropertyName("first_contact")]
+    public FirstContact? FirstContact { get; set; }
 }
 
 /// <summary>Parameters of `POST /locations`.</summary>
