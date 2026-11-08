@@ -16,5 +16,5 @@ public static class ApiVersion
     public const string BaseUrl = "https://api.yesly.dev/v1";
 
     /// <summary>Every webhook event type.</summary>
-    public static readonly IReadOnlyList<string> EventTypes = new[] { "appointment.created", "appointment.confirmed", "appointment.rescheduled", "appointment.cancelled", "appointment.no_reply", "message.sent", "message.delivered", "message.failed", "call.started", "call.completed", "call.transferred", "balance.low", "balance.topped_up" };
+    public static readonly IReadOnlyList<string> EventTypes = new[] { "appointment.created", "appointment.confirmed", "appointment.rescheduled", "appointment.reschedule_requested", "appointment.cancelled", "appointment.no_reply", "message.sent", "message.delivered", "message.failed", "call.started", "call.completed", "call.transferred", "balance.low", "balance.topped_up" };
 }

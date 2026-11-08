@@ -67,6 +67,24 @@ public sealed class Answer
     public string? At { get; set; }
 }
 
+/// <summary>The customer's wish when there was no free slot to pick, or none suited them.</summary>
+public sealed class RescheduleRequest
+{
+    /// <summary>Up to 3 days that would suit them (`YYYY-MM-DD`, in your time zone). Empty when they just asked for another day.</summary>
+    [JsonPropertyName("dates")]
+    public List<string>? Dates { get; set; }
+
+    [JsonPropertyName("part_of_day")]
+    public string? PartOfDay { get; set; }
+
+    /// <summary>Anything else they wrote, up to 300 characters.</summary>
+    [JsonPropertyName("note")]
+    public string? Note { get; set; }
+
+    [JsonPropertyName("at")]
+    public string? At { get; set; }
+}
+
 public sealed class Cancellation
 {
     /// <summary>Who cancelled.</summary>
@@ -143,7 +161,7 @@ public sealed class Appointment
     [JsonPropertyName("external_id")]
     public string? ExternalId { get; set; }
 
-    /// <summary>- `scheduled`: created, waiting for `first_contact_at`. - `in_progress`: Yesly is contacting the customer. - `confirmed`: the customer will be there. - `rescheduled`: the customer moved it to one of your free slots. - `cancelled`: cancelled by the customer or by you. - `no_reply`: no answer on any channel. Your team should call.</summary>
+    /// <summary>- `scheduled`: created, waiting for `first_contact_at`. - `in_progress`: Yesly is contacting the customer. - `confirmed`: the customer will be there. - `rescheduled`: the customer moved it to one of your free slots. - `reschedule_requested`: the customer wants another day and there was no free slot that suited them; `reschedule_request` says which days and when. Set the new `slot` and confirmation starts again. - `cancelled`: cancelled by the customer or by you. - `no_reply`: no answer on any channel. Your team should call.</summary>
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
@@ -178,6 +196,10 @@ public sealed class Appointment
     /// <summary>The customer's answer, or `null`.</summary>
     [JsonPropertyName("answer")]
     public Answer? Answer { get; set; }
+
+    /// <summary>What the customer would like instead, when they asked for another day without picking a slot, or `null`.</summary>
+    [JsonPropertyName("reschedule_request")]
+    public RescheduleRequest? RescheduleRequest { get; set; }
 
     /// <summary>Who cancelled, why and when, or `null`.</summary>
     [JsonPropertyName("cancellation")]
@@ -654,7 +676,7 @@ public sealed class EventBase
     [JsonPropertyName("object")]
     public string? Object { get; set; }
 
-    /// <summary>- `appointment.created`: created by API, import, CSV or in the dashboard. - `appointment.confirmed`: the customer confirmed. - `appointment.rescheduled`: the customer moved it to another slot. - `appointment.cancelled`: cancelled by the customer or by you. - `appointment.no_reply`: no channel got an answer. - `message.sent`: a WhatsApp message or SMS left Yesly. - `message.delivered`: the carrier or WhatsApp confirmed delivery. - `message.failed`: it could not be delivered; the next channel runs. - `call.started`: a call started ringing. - `call.completed`: a call ended, with its duration and outcome. - `call.transferred`: the call was passed to the location's phone. - `balance.low`: the balance went below your alert threshold. - `balance.topped_up`: a top-up was paid.</summary>
+    /// <summary>- `appointment.created`: created by API, import, CSV or in the dashboard. - `appointment.confirmed`: the customer confirmed. - `appointment.rescheduled`: the customer moved it to another slot. - `appointment.reschedule_requested`: the customer asked for another day; set the new slot. - `appointment.cancelled`: cancelled by the customer or by you. - `appointment.no_reply`: no channel got an answer. - `message.sent`: a WhatsApp message or SMS left Yesly. - `message.delivered`: the carrier or WhatsApp confirmed delivery. - `message.failed`: it could not be delivered; the next channel runs. - `call.started`: a call started ringing. - `call.completed`: a call ended, with its duration and outcome. - `call.transferred`: the call was passed to the location's phone. - `balance.low`: the balance went below your alert threshold. - `balance.topped_up`: a top-up was paid.</summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
@@ -1232,6 +1254,9 @@ public sealed class AnalyticsSummaryOutcomes
 
     [JsonPropertyName("rescheduled")]
     public long? Rescheduled { get; set; }
+
+    [JsonPropertyName("reschedule_requested")]
+    public long? RescheduleRequested { get; set; }
 
     [JsonPropertyName("cancelled")]
     public long? Cancelled { get; set; }
