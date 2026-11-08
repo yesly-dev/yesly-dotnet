@@ -67,80 +67,82 @@ public sealed class Answer
     public string? At { get; set; }
 }
 
-/// <summary>The customer's wish when there was no free slot to pick, or none suited them.</summary>
-public sealed class RescheduleRequest
+/// <summary>A free slot in your own system (live availability), as your system returns it.</summary>
+public sealed class AvailabilitySlot
 {
-    /// <summary>Up to 3 days that would suit them (`YYYY-MM-DD`, in your time zone). Empty when they just asked for another day.</summary>
-    [JsonPropertyName("dates")]
-    public List<string>? Dates { get; set; }
-
-    [JsonPropertyName("part_of_day")]
-    public string? PartOfDay { get; set; }
-
-    /// <summary>Anything else they wrote, up to 300 characters.</summary>
-    [JsonPropertyName("note")]
-    public string? Note { get; set; }
-
-    [JsonPropertyName("at")]
-    public string? At { get; set; }
-}
-
-public sealed class Cancellation
-{
-    /// <summary>Who cancelled.</summary>
-    [JsonPropertyName("by")]
-    public string? By { get; set; }
-
-    /// <summary>The reason given, if any.</summary>
-    [JsonPropertyName("reason")]
-    public string? Reason { get; set; }
-
-    [JsonPropertyName("at")]
-    public string? At { get; set; }
-}
-
-/// <summary>One contact attempt.</summary>
-public sealed class Attempt
-{
-    /// <summary>Unique id, prefixed `att_`.</summary>
+    /// <summary>Your id for the slot. Yesly sends it back in `availability.book`.</summary>
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
-    /// <summary>Contact channel. `email` needs `customer.email` on the appointment; without it the step is skipped.</summary>
-    [JsonPropertyName("channel")]
-    public string? Channel { get; set; }
+    [JsonPropertyName("start")]
+    public string? Start { get; set; }
 
-    [JsonPropertyName("status")]
-    public string? Status { get; set; }
+    [JsonPropertyName("end")]
+    public string? End { get; set; }
 
-    [JsonPropertyName("sent_at")]
-    public string? SentAt { get; set; }
+    /// <summary>`exact` for a time (a doctor at 10:20), `window` for a range (an installer from 8 to 14). Default `exact`.</summary>
+    [JsonPropertyName("kind")]
+    public string? Kind { get; set; }
 
-    /// <summary>Cost of this attempt, in euros.</summary>
-    [JsonPropertyName("cost")]
-    public double? Cost { get; set; }
-
-    /// <summary>Calls only: what the call said and what it heard, in order. A customer turn has the recognised speech in `text` (empty for a silence) or the key pressed in `key`. Kept with the appointment and deleted with it.</summary>
-    [JsonPropertyName("transcript")]
-    public List<TranscriptLine>? Transcript { get; set; }
+    /// <summary>Who or what attends, when it matters to the customer.</summary>
+    [JsonPropertyName("resource")]
+    public AvailabilitySlotResource? Resource { get; set; }
 }
 
-/// <summary>One turn of a call.</summary>
-public sealed class TranscriptLine
+/// <summary>Who or what attends, when it matters to the customer.</summary>
+public sealed class AvailabilitySlotResource
 {
-    [JsonPropertyName("speaker")]
-    public string? Speaker { get; set; }
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
 
-    /// <summary>What was said. `null` when the customer pressed a key.</summary>
-    [JsonPropertyName("text")]
-    public string? Text { get; set; }
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+}
 
-    /// <summary>The key the customer pressed, such as `1`.</summary>
-    [JsonPropertyName("key")]
-    public string? Key { get; set; }
+/// <summary>What Yesly POSTs to your system's URL (live availability), signed with `Yesly-Signature` like webhooks. `availability.list` asks for free slots for the appointment between `from` and `to`; answer with AvailabilityListResponse. `availability.book` asks to book `slot.id`; answer with AvailabilityBookResponse, or `409` if it was just taken.</summary>
+public sealed class AvailabilityRequest
+{
+    /// <summary>Unique id, prefixed `avq_` (list) or `avb_` (book).</summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
 
-    [JsonPropertyName("at")]
-    public string? At { get; set; }
+    [JsonPropertyName("object")]
+    public string? Object { get; set; }
+
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    [JsonPropertyName("mode")]
+    public string? Mode { get; set; }
+
+    [JsonPropertyName("created")]
+    public string? Created { get; set; }
+
+    [JsonPropertyName("data")]
+    public AvailabilityRequestData? Data { get; set; }
+}
+
+public sealed class AvailabilityRequestData
+{
+    /// <summary>A visit, delivery or meeting Yesly confirms with your customer. Its `status` moves forward as the customer answers.</summary>
+    [JsonPropertyName("appointment")]
+    public Appointment? Appointment { get; set; }
+
+    /// <summary>On `availability.list`, the earliest start to offer.</summary>
+    [JsonPropertyName("from")]
+    public string? From { get; set; }
+
+    /// <summary>On `availability.list`, the latest start to offer.</summary>
+    [JsonPropertyName("to")]
+    public string? To { get; set; }
+
+    /// <summary>On `availability.list`, how many slots are shown at most.</summary>
+    [JsonPropertyName("limit")]
+    public long? Limit { get; set; }
+
+    /// <summary>On `availability.book`, the slot the customer picked.</summary>
+    [JsonPropertyName("slot")]
+    public AvailabilityRequestDataSlot? Slot { get; set; }
 }
 
 /// <summary>A visit, delivery or meeting Yesly confirms with your customer. Its `status` moves forward as the customer answers.</summary>
@@ -228,6 +230,106 @@ public sealed class Appointment
     /// <summary>When anything in it last changed.</summary>
     [JsonPropertyName("updated")]
     public string? Updated { get; set; }
+}
+
+/// <summary>The customer's wish when there was no free slot to pick, or none suited them.</summary>
+public sealed class RescheduleRequest
+{
+    /// <summary>Up to 3 days that would suit them (`YYYY-MM-DD`, in your time zone). Empty when they just asked for another day.</summary>
+    [JsonPropertyName("dates")]
+    public List<string>? Dates { get; set; }
+
+    [JsonPropertyName("part_of_day")]
+    public string? PartOfDay { get; set; }
+
+    /// <summary>Anything else they wrote, up to 300 characters.</summary>
+    [JsonPropertyName("note")]
+    public string? Note { get; set; }
+
+    [JsonPropertyName("at")]
+    public string? At { get; set; }
+}
+
+public sealed class Cancellation
+{
+    /// <summary>Who cancelled.</summary>
+    [JsonPropertyName("by")]
+    public string? By { get; set; }
+
+    /// <summary>The reason given, if any.</summary>
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+
+    [JsonPropertyName("at")]
+    public string? At { get; set; }
+}
+
+/// <summary>One contact attempt.</summary>
+public sealed class Attempt
+{
+    /// <summary>Unique id, prefixed `att_`.</summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    /// <summary>Contact channel. `email` needs `customer.email` on the appointment; without it the step is skipped.</summary>
+    [JsonPropertyName("channel")]
+    public string? Channel { get; set; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("sent_at")]
+    public string? SentAt { get; set; }
+
+    /// <summary>Cost of this attempt, in euros.</summary>
+    [JsonPropertyName("cost")]
+    public double? Cost { get; set; }
+
+    /// <summary>Calls only: what the call said and what it heard, in order. A customer turn has the recognised speech in `text` (empty for a silence) or the key pressed in `key`. Kept with the appointment and deleted with it.</summary>
+    [JsonPropertyName("transcript")]
+    public List<TranscriptLine>? Transcript { get; set; }
+}
+
+/// <summary>One turn of a call.</summary>
+public sealed class TranscriptLine
+{
+    [JsonPropertyName("speaker")]
+    public string? Speaker { get; set; }
+
+    /// <summary>What was said. `null` when the customer pressed a key.</summary>
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+
+    /// <summary>The key the customer pressed, such as `1`.</summary>
+    [JsonPropertyName("key")]
+    public string? Key { get; set; }
+
+    [JsonPropertyName("at")]
+    public string? At { get; set; }
+}
+
+/// <summary>On `availability.book`, the slot the customer picked.</summary>
+public sealed class AvailabilityRequestDataSlot
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+}
+
+public sealed class AvailabilityListResponse
+{
+    [JsonPropertyName("slots")]
+    public List<AvailabilitySlot>? Slots { get; set; }
+}
+
+public sealed class AvailabilityBookResponse
+{
+    /// <summary>`false` (or a `409`) when the slot was just taken.</summary>
+    [JsonPropertyName("booked")]
+    public bool? Booked { get; set; }
+
+    /// <summary>A free slot in your own system (live availability), as your system returns it.</summary>
+    [JsonPropertyName("slot")]
+    public AvailabilitySlot? Slot { get; set; }
 }
 
 public sealed class AppointmentCreate
