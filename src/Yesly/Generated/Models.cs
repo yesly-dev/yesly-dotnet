@@ -632,6 +632,10 @@ public sealed class AppointmentType
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
+    /// <summary>Whether the customer may cancel. Off for deliveries such as a parcel or a mattress; then a "no" asks for another day (if reschedulable) or goes to your team.</summary>
+    [JsonPropertyName("cancellable")]
+    public bool? Cancellable { get; set; }
+
     /// <summary>When the first message goes out for this type, or `null` to use your account's setting.</summary>
     [JsonPropertyName("first_contact")]
     public FirstContact? FirstContact { get; set; }
@@ -669,6 +673,9 @@ public sealed class AppointmentTypeCreate
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
+    [JsonPropertyName("cancellable")]
+    public bool? Cancellable { get; set; }
+
     /// <summary>Its own first message. Leave it out (or `null`) to use your account's setting.</summary>
     [JsonPropertyName("first_contact")]
     public FirstContact? FirstContact { get; set; }
@@ -691,6 +698,10 @@ public sealed class AppointmentTypeUpdate
     /// <summary>Whether the customer may ask for another date.</summary>
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
+
+    /// <summary>Whether the customer may cancel.</summary>
+    [JsonPropertyName("cancellable")]
+    public bool? Cancellable { get; set; }
 
     /// <summary>Its own first message; `null` goes back to your account's setting.</summary>
     [JsonPropertyName("first_contact")]
@@ -1673,6 +1684,9 @@ public sealed class AppointmentTypeCreateOptions
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
+    [JsonPropertyName("cancellable")]
+    public bool? Cancellable { get; set; }
+
     /// <summary>Its own first message. Leave it out (or `null`) to use your account's setting.</summary>
     [JsonPropertyName("first_contact")]
     public FirstContact? FirstContact { get; set; }
@@ -1696,6 +1710,10 @@ public sealed class AppointmentTypeUpdateOptions
     /// <summary>Whether the customer may ask for another date.</summary>
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
+
+    /// <summary>Whether the customer may cancel.</summary>
+    [JsonPropertyName("cancellable")]
+    public bool? Cancellable { get; set; }
 
     /// <summary>Its own first message; `null` goes back to your account's setting.</summary>
     [JsonPropertyName("first_contact")]
