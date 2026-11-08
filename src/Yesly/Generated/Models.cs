@@ -47,6 +47,10 @@ public sealed class Customer
     /// <summary>Phone number in E.164 format, such as `+34612345678`.</summary>
     [JsonPropertyName("phone")]
     public string? Phone { get; set; }
+
+    /// <summary>Email for the `email` channel, lower-cased. `null` when there is none.</summary>
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
 }
 
 /// <summary>The customer's answer.</summary>
@@ -55,7 +59,7 @@ public sealed class Answer
     [JsonPropertyName("result")]
     public string? Result { get; set; }
 
-    /// <summary>Contact channel.</summary>
+    /// <summary>Contact channel. `email` needs `customer.email` on the appointment; without it the step is skipped.</summary>
     [JsonPropertyName("channel")]
     public string? Channel { get; set; }
 
@@ -84,7 +88,7 @@ public sealed class Attempt
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
-    /// <summary>Contact channel.</summary>
+    /// <summary>Contact channel. `email` needs `customer.email` on the appointment; without it the step is skipped.</summary>
     [JsonPropertyName("channel")]
     public string? Channel { get; set; }
 
@@ -161,7 +165,7 @@ public sealed class Appointment
     [JsonPropertyName("attempts")]
     public List<Attempt>? Attempts { get; set; }
 
-    /// <summary>What this appointment has cost so far, in euros. WhatsApp 0.08 per message, SMS 0.15 per message, voice 0.30 per answered minute; unanswered calls are free.</summary>
+    /// <summary>What this appointment has cost so far, in euros. WhatsApp 0.08 per message, SMS 0.15 per message, email 0.01 per message, voice 0.30 per answered minute; unanswered calls are free.</summary>
     [JsonPropertyName("cost")]
     public double? Cost { get; set; }
 
@@ -231,9 +235,13 @@ public sealed class AppointmentCreateCustomer
     /// <summary>Phone number in E.164 format, such as `+34612345678`.</summary>
     [JsonPropertyName("phone")]
     public string? Phone { get; set; }
+
+    /// <summary>Email for the `email` channel. Optional.</summary>
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
 }
 
-/// <summary>Send only what changes. Changing `slot` or `customer.phone` starts the confirmation again.</summary>
+/// <summary>Send only what changes. Changing `slot`, `customer.phone` or `customer.email` starts the confirmation again.</summary>
 public sealed class AppointmentUpdate
 {
     /// <summary>New appointment type id.</summary>
@@ -279,6 +287,10 @@ public sealed class AppointmentUpdateCustomer
     /// <summary>Phone number in E.164 format, such as `+34612345678`.</summary>
     [JsonPropertyName("phone")]
     public string? Phone { get; set; }
+
+    /// <summary>New email; `null` removes it.</summary>
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
 }
 
 /// <summary>A page of a list. Keep paginating with `starting_after` while `has_more` is `true`.</summary>
@@ -1116,7 +1128,7 @@ public sealed class BalanceTransaction
     [JsonPropertyName("quantity")]
     public double? Quantity { get; set; }
 
-    /// <summary>`message` for WhatsApp and SMS, `minute` for voice.</summary>
+    /// <summary>`message` for WhatsApp, SMS and email, `minute` for voice.</summary>
     [JsonPropertyName("unit")]
     public string? Unit { get; set; }
 
@@ -1220,6 +1232,9 @@ public sealed class AnalyticsSummaryAnsweredBy
 
     [JsonPropertyName("voice")]
     public long? Voice { get; set; }
+
+    [JsonPropertyName("email")]
+    public long? Email { get; set; }
 }
 
 public sealed class AnalyticsSummaryUsage
@@ -1232,6 +1247,9 @@ public sealed class AnalyticsSummaryUsage
 
     [JsonPropertyName("voice_minutes")]
     public double? VoiceMinutes { get; set; }
+
+    [JsonPropertyName("email_messages")]
+    public long? EmailMessages { get; set; }
 }
 
 public sealed class AnalyticsSummarySpend
@@ -1337,6 +1355,10 @@ public sealed class AppointmentCreateOptionsCustomer
     /// <summary>Phone number in E.164 format, such as `+34612345678`.</summary>
     [JsonPropertyName("phone")]
     public string? Phone { get; set; }
+
+    /// <summary>Email for the `email` channel. Optional.</summary>
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
 }
 
 /// <summary>Parameters of `PATCH /appointments/{id}`.</summary>
@@ -1385,6 +1407,10 @@ public sealed class AppointmentUpdateOptionsCustomer
     /// <summary>Phone number in E.164 format, such as `+34612345678`.</summary>
     [JsonPropertyName("phone")]
     public string? Phone { get; set; }
+
+    /// <summary>New email; `null` removes it.</summary>
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
 }
 
 /// <summary>Parameters of `POST /appointments/{id}/cancel`.</summary>
