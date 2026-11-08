@@ -16,6 +16,7 @@ namespace Yesly;
 [JsonSerializable(typeof(Answer))]
 [JsonSerializable(typeof(Cancellation))]
 [JsonSerializable(typeof(Attempt))]
+[JsonSerializable(typeof(TranscriptLine))]
 [JsonSerializable(typeof(Appointment))]
 [JsonSerializable(typeof(AppointmentCreate))]
 [JsonSerializable(typeof(AppointmentCreateSlot))]

@@ -101,6 +101,28 @@ public sealed class Attempt
     /// <summary>Cost of this attempt, in euros.</summary>
     [JsonPropertyName("cost")]
     public double? Cost { get; set; }
+
+    /// <summary>Calls only: what the call said and what it heard, in order. A customer turn has the recognised speech in `text` (empty for a silence) or the key pressed in `key`. Kept with the appointment and deleted with it.</summary>
+    [JsonPropertyName("transcript")]
+    public List<TranscriptLine>? Transcript { get; set; }
+}
+
+/// <summary>One turn of a call.</summary>
+public sealed class TranscriptLine
+{
+    [JsonPropertyName("speaker")]
+    public string? Speaker { get; set; }
+
+    /// <summary>What was said. `null` when the customer pressed a key.</summary>
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+
+    /// <summary>The key the customer pressed, such as `1`.</summary>
+    [JsonPropertyName("key")]
+    public string? Key { get; set; }
+
+    [JsonPropertyName("at")]
+    public string? At { get; set; }
 }
 
 /// <summary>A visit, delivery or meeting Yesly confirms with your customer. Its `status` moves forward as the customer answers.</summary>
