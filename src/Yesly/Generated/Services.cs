@@ -17,7 +17,7 @@ public sealed class AppointmentsService
     internal AppointmentsService(YeslyClient client) => _client = client;
 
     /// <summary>List appointments.</summary>
-    /// <remarks>Lists appointments, newest first. A common use is to ask, each afternoon, which of tomorrow's appointments ended with `no_reply` so your team can call them. <c>GET /appointments</c></remarks>
+    /// <remarks>Lists appointments. With `status`, `date`, `from`, `to` or `metadata` the list is in slot order, soonest first; otherwise it is newest first, by creation. A `date`, `from` or `to` filter without `status` or `metadata` covers at most 62 days. A common use is to ask, each afternoon, which of tomorrow's appointments ended with `no_reply` so your team can call them. <c>GET /appointments</c></remarks>
     public Task<Page<Appointment>> ListAsync(AppointmentListOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.ListAsync<Appointment>("GET", "/appointments", options, requestOptions, cancellationToken);
 
@@ -26,7 +26,7 @@ public sealed class AppointmentsService
         => _client.ListAutoPagingAsync<Appointment>("GET", "/appointments", options, requestOptions, cancellationToken);
 
     /// <summary>Create an appointment.</summary>
-    /// <remarks>Creates an appointment and schedules the first contact. By default Yesly writes the day before at 10:00 and moves through your channels if there is no answer; if the appointment is booked after that moment, contact starts at the next allowed time within your contact hours. <c>POST /appointments</c></remarks>
+    /// <remarks>Creates an appointment and schedules the first contact. By default Yesly writes the day before at 10:00 and moves through your channels if there is no answer; if the appointment is booked after that moment, contact starts at the next allowed time within your contact hours. If no contact time is left before the slot starts, `first_contact_at` is `null` and the customer is not contacted. <c>POST /appointments</c></remarks>
     public Task<Appointment> CreateAsync(AppointmentCreateOptions options, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<Appointment>("POST", "/appointments", null, options, false, requestOptions, cancellationToken);
 
@@ -36,7 +36,7 @@ public sealed class AppointmentsService
         => _client.RequestAsync<Appointment>("GET", $"/appointments/{Uri.EscapeDataString(id)}", null, null, false, requestOptions, cancellationToken);
 
     /// <summary>Update an appointment.</summary>
-    /// <remarks>Changes an appointment. Send only what changes. `metadata` is merged: keys you send are set, a key sent as an empty string is removed. <c>PATCH /appointments/{id}</c></remarks>
+    /// <remarks>Changes an appointment. Send only what changes. `metadata` is merged: keys you send are set, a key sent as `null` or an empty string is removed. <c>PATCH /appointments/{id}</c></remarks>
     public Task<Appointment> UpdateAsync(string id, AppointmentUpdateOptions options, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<Appointment>("PATCH", $"/appointments/{Uri.EscapeDataString(id)}", null, options, false, requestOptions, cancellationToken);
 
@@ -79,7 +79,7 @@ public sealed class SlotsService
         => _client.ListAutoPagingAsync<Slot>("GET", "/slots", options, requestOptions, cancellationToken);
 
     /// <summary>Publish slots.</summary>
-    /// <remarks>Publishes free slots in bulk, up to 500 per request. A slot with the same type, location and start as an existing one replaces it, so you can send your full availability every few hours. Lowering `capacity` below `booked` is refused. <c>POST /slots</c></remarks>
+    /// <remarks>Publishes free slots in bulk, up to 500 per request. A slot with the same type, location and start as an existing one replaces it, so you can send your full availability every few hours; a replaced slot keeps its `booked` count. <c>POST /slots</c></remarks>
     public Task<SlotList> CreateAsync(SlotCreateOptions options, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<SlotList>("POST", "/slots", null, options, true, requestOptions, cancellationToken);
 
@@ -105,7 +105,7 @@ public sealed class AppointmentTypesService
         => _client.ListAutoPagingAsync<AppointmentType>("GET", "/appointment_types", null, requestOptions, cancellationToken);
 
     /// <summary>Create an appointment type.</summary>
-    /// <remarks>Adds an appointment type. Message templates pick it up at once through `{type}`, `{time}` and `{instructions}`. <c>POST /appointment_types</c></remarks>
+    /// <remarks>Adds an appointment type. Its name and time format are used in the messages sent from then on. <c>POST /appointment_types</c></remarks>
     public Task<AppointmentType> CreateAsync(AppointmentTypeCreateOptions options, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<AppointmentType>("POST", "/appointment_types", null, options, true, requestOptions, cancellationToken);
 
@@ -148,13 +148,13 @@ public sealed class WebhookEndpointsService
     internal WebhookEndpointsService(YeslyClient client) => _client = client;
 
     /// <summary>List endpoints.</summary>
-    /// <remarks>Lists the webhook endpoints in the key's mode. <c>GET /webhook_endpoints</c></remarks>
-    public Task<Page<WebhookEndpoint>> ListAsync(WebhookEndpointListOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
-        => _client.ListAsync<WebhookEndpoint>("GET", "/webhook_endpoints", options, requestOptions, cancellationToken);
+    /// <remarks>Lists all the webhook endpoints in the key's mode, in one page. <c>GET /webhook_endpoints</c></remarks>
+    public Task<Page<WebhookEndpoint>> ListAsync(RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.ListAsync<WebhookEndpoint>("GET", "/webhook_endpoints", null, requestOptions, cancellationToken);
 
     /// <summary>Every item of <see cref="ListAsync"/>, fetching pages as needed.</summary>
-    public IAsyncEnumerable<WebhookEndpoint> ListAutoPagingAsync(WebhookEndpointListOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
-        => _client.ListAutoPagingAsync<WebhookEndpoint>("GET", "/webhook_endpoints", options, requestOptions, cancellationToken);
+    public IAsyncEnumerable<WebhookEndpoint> ListAutoPagingAsync(RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.ListAutoPagingAsync<WebhookEndpoint>("GET", "/webhook_endpoints", null, requestOptions, cancellationToken);
 
     /// <summary>Create an endpoint.</summary>
     /// <remarks>Adds a webhook endpoint in the key's mode. Live and test endpoints are separate. <c>POST /webhook_endpoints</c></remarks>
@@ -172,7 +172,7 @@ public sealed class WebhookEndpointsService
         => _client.RequestAsync<DeletedObject>("DELETE", $"/webhook_endpoints/{Uri.EscapeDataString(id)}", null, null, false, requestOptions, cancellationToken);
 
     /// <summary>Send a test event.</summary>
-    /// <remarks>Sends a sample event, marked `"mode": "test"`, to the endpoint and returns what it answered. Useful to check the URL and your signature check before going live. <c>POST /webhook_endpoints/{id}/test</c></remarks>
+    /// <remarks>Sends a sample event to the endpoint, signed like a real one, and returns what it answered. Useful to check the URL and your signature check before going live. The event has the `mode` of the key that calls this, and `data` is always a sample `appointment` (with only some fields), whatever the `type`. It is not stored, so it does not appear in List events. <c>POST /webhook_endpoints/{id}/test</c></remarks>
     public Task<WebhookTest> TestAsync(string id, WebhookEndpointTestOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<WebhookTest>("POST", $"/webhook_endpoints/{Uri.EscapeDataString(id)}/test", null, options, true, requestOptions, cancellationToken);
 
@@ -210,12 +210,12 @@ public sealed class BalanceService
     internal BalanceService(YeslyClient client) => _client = client;
 
     /// <summary>Retrieve the balance.</summary>
-    /// <remarks>Yesly is prepaid. Each WhatsApp message, SMS and minute of answered call is taken from the balance at the public price; calls nobody picks up are free. Top-ups are made by card in the dashboard and cannot be made through the API. <c>GET /balance</c></remarks>
+    /// <remarks>Yesly is prepaid. Each WhatsApp message, SMS, email and started minute of a call that was picked up is taken from the balance at the public price; calls nobody picks up are free. A message that could not be sent is refunded with an `adjustment`. When a customer asks for another day on a call, the SMS with the link to pick a day is charged as an SMS. Top-ups are made by card in the dashboard and cannot be made through the API. <c>GET /balance</c></remarks>
     public Task<Balance> RetrieveAsync(RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<Balance>("GET", "/balance", null, null, false, requestOptions, cancellationToken);
 
     /// <summary>List balance transactions.</summary>
-    /// <remarks>Every charge and top-up, newest first. Charges point to the appointment and its `external_id`, so you can pass the cost on to an order, route or customer. <c>GET /balance/transactions</c></remarks>
+    /// <remarks>Every charge, top-up and adjustment, newest first. Charges point to the appointment and its `external_id`, so you can pass the cost on to an order, route or customer. Refunds of failed messages (`adjustment`) do not point to the appointment. <c>GET /balance/transactions</c></remarks>
     public Task<Page<BalanceTransaction>> ListTransactionsAsync(BalanceListTransactionsOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.ListAsync<BalanceTransaction>("GET", "/balance/transactions", options, requestOptions, cancellationToken);
 
@@ -231,7 +231,7 @@ public sealed class AnalyticsService
     internal AnalyticsService(YeslyClient client) => _client = client;
 
     /// <summary>Summary.</summary>
-    /// <remarks>The figures behind the dashboard's Analytics page, for your own reports: outcomes, which channel got the answer, how long customers took, usage and spend. Days follow your account's time zone. <c>GET /analytics/summary</c></remarks>
+    /// <remarks>The figures behind the dashboard's Analytics page, for your own reports: outcomes, which channel got the answer, how long customers took, usage and spend, in total and day by day. Appointments count on the day of their slot, in your account's time zone. <c>GET /analytics/summary</c></remarks>
     public Task<AnalyticsSummary> RetrieveSummaryAsync(AnalyticsRetrieveSummaryOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<AnalyticsSummary>("GET", "/analytics/summary", options, null, false, requestOptions, cancellationToken);
 }

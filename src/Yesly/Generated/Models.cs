@@ -59,7 +59,7 @@ public sealed class Answer
     [JsonPropertyName("result")]
     public string? Result { get; set; }
 
-    /// <summary>Contact channel. `email` needs `customer.email` on the appointment; without it the step is skipped.</summary>
+    /// <summary>Contact channel.</summary>
     [JsonPropertyName("channel")]
     public string? Channel { get; set; }
 
@@ -163,7 +163,7 @@ public sealed class Appointment
     [JsonPropertyName("external_id")]
     public string? ExternalId { get; set; }
 
-    /// <summary>- `scheduled`: created, waiting for `first_contact_at`. - `in_progress`: Yesly is contacting the customer. - `confirmed`: the customer will be there. - `rescheduled`: the customer moved it to one of your free slots. - `reschedule_requested`: the customer wants another day and there was no free slot that suited them; `reschedule_request` says which days and when. Set the new `slot` and confirmation starts again. - `cancelled`: cancelled by the customer or by you. - `no_reply`: no answer on any channel. Your team should call.</summary>
+    /// <summary>- `scheduled`: created, waiting for `first_contact_at`. - `in_progress`: Yesly is contacting the customer. Also where contact stopped because the balance did not cover the next message; it is not resumed. - `confirmed`: the customer will be there. - `rescheduled`: the customer moved it to a free time (your published slots or your own system). - `reschedule_requested`: the customer wants another day and did not pick a free time: they proposed days, or asked on the call and did not pick a day from the SMS link. `reschedule_request` says what they would like. Set the new `slot` and confirmation starts again. - `cancelled`: cancelled by the customer or by you. - `no_reply`: no answer on any channel, or the call was transferred. Your team should call.</summary>
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
@@ -211,7 +211,7 @@ public sealed class Appointment
     [JsonPropertyName("attempts")]
     public List<Attempt>? Attempts { get; set; }
 
-    /// <summary>What this appointment has cost so far, in euros. WhatsApp 0.08 per message, SMS 0.15 per message, email 0.01 per message, voice 0.30 per answered minute; unanswered calls are free.</summary>
+    /// <summary>What this appointment has cost so far, in euros. WhatsApp 0.08 per message, SMS 0.15 per message, email 0.01 per message, voice 0.30 per started minute of a call that was picked up; unanswered calls are free. An SMS with the link to pick a day after a call adds 0.15. Messages refused when sending are refunded. In test mode it shows the message prices, but nothing is charged.</summary>
     [JsonPropertyName("cost")]
     public double? Cost { get; set; }
 
@@ -232,17 +232,17 @@ public sealed class Appointment
     public string? Updated { get; set; }
 }
 
-/// <summary>The customer's wish when there was no free slot to pick, or none suited them.</summary>
+/// <summary>The customer's wish when they asked for another day without picking a free time.</summary>
 public sealed class RescheduleRequest
 {
-    /// <summary>Up to 3 days that would suit them (`YYYY-MM-DD`, in your time zone). Empty when they just asked for another day.</summary>
+    /// <summary>Up to 3 days that would suit them (`YYYY-MM-DD`, in your time zone). Empty when they just asked for another day, such as on a call.</summary>
     [JsonPropertyName("dates")]
     public List<string>? Dates { get; set; }
 
     [JsonPropertyName("part_of_day")]
     public string? PartOfDay { get; set; }
 
-    /// <summary>Anything else they wrote, up to 300 characters.</summary>
+    /// <summary>Anything else they wrote, up to 500 characters. From a call, what the customer said, or a note that they asked on the call and did not pick a day.</summary>
     [JsonPropertyName("note")]
     public string? Note { get; set; }
 
@@ -271,17 +271,19 @@ public sealed class Attempt
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
-    /// <summary>Contact channel. `email` needs `customer.email` on the appointment; without it the step is skipped.</summary>
+    /// <summary>Contact channel.</summary>
     [JsonPropertyName("channel")]
     public string? Channel { get; set; }
 
+    /// <summary>`queued` (not handed over yet), `sent`, `delivered`, `read` (WhatsApp), `answered`, `no_answer` (calls), `failed`, or `transferred` (calls passed to a location's phone).</summary>
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
+    /// <summary>When it was handed to the provider. `null` while `queued` or when it failed before.</summary>
     [JsonPropertyName("sent_at")]
     public string? SentAt { get; set; }
 
-    /// <summary>Cost of this attempt, in euros.</summary>
+    /// <summary>Cost of this attempt, in euros. `0` for a message refused when sending (refunded). On a call, includes the SMS with the link to pick a day, if one was sent.</summary>
     [JsonPropertyName("cost")]
     public double? Cost { get; set; }
 
@@ -342,7 +344,7 @@ public sealed class AppointmentCreate
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Location id. Required when the type happens at one of your locations; otherwise optional, and used to pass calls to that location's phone.</summary>
+    /// <summary>Location id, optional. For a type whose `place` is `location`, its name and address are shown in the email and on the answer page.</summary>
     [JsonPropertyName("location")]
     public string? Location { get; set; }
 
@@ -352,7 +354,7 @@ public sealed class AppointmentCreate
     [JsonPropertyName("customer")]
     public AppointmentCreateCustomer? Customer { get; set; }
 
-    /// <summary>Override the channel order for this appointment, such as `["whatsapp", "voice"]`. Only channels enabled in your account.</summary>
+    /// <summary>Override the channel order for this appointment, such as `["whatsapp", "voice"]`. At least one, without repeats. Without it, your account's channels.</summary>
     [JsonPropertyName("channels")]
     public List<string>? Channels { get; set; }
 
@@ -367,7 +369,7 @@ public sealed class AppointmentCreateSlot
     [JsonPropertyName("start")]
     public string? Start { get; set; }
 
-    /// <summary>End of the window. Leave it out for exact-time types; it is computed from the type's duration.</summary>
+    /// <summary>End of the window, after `start`. Without it, `start` plus the type's `minutes` (60 if the account has no types).</summary>
     [JsonPropertyName("end")]
     public string? End { get; set; }
 }
@@ -387,14 +389,14 @@ public sealed class AppointmentCreateCustomer
     public string? Email { get; set; }
 }
 
-/// <summary>Send only what changes. Changing `slot`, `customer.phone` or `customer.email` starts the confirmation again.</summary>
+/// <summary>Send only what changes. Changing the slot start, `customer.phone`, `customer.email` or `channels` starts the confirmation again.</summary>
 public sealed class AppointmentUpdate
 {
     /// <summary>New appointment type id.</summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>New location id.</summary>
+    /// <summary>New location id; `null` removes it.</summary>
     [JsonPropertyName("location")]
     public string? Location { get; set; }
 
@@ -404,11 +406,11 @@ public sealed class AppointmentUpdate
     [JsonPropertyName("customer")]
     public AppointmentUpdateCustomer? Customer { get; set; }
 
-    /// <summary>New channel order for this appointment.</summary>
+    /// <summary>New channel order for this appointment. At least one, without repeats.</summary>
     [JsonPropertyName("channels")]
     public List<string>? Channels { get; set; }
 
-    /// <summary>Keys to set, merged with the existing ones. An empty string removes the key.</summary>
+    /// <summary>Keys to set, merged with the existing ones. A value of `null` or an empty string removes the key. At most 20 keys after the merge.</summary>
     [JsonPropertyName("metadata")]
     public Dictionary<string, string>? Metadata { get; set; }
 }
@@ -419,7 +421,7 @@ public sealed class AppointmentUpdateSlot
     [JsonPropertyName("start")]
     public string? Start { get; set; }
 
-    /// <summary>New end of the window.</summary>
+    /// <summary>New end of the window. Without it, the new start plus the current length (or the new type's `minutes`, if you change the type).</summary>
     [JsonPropertyName("end")]
     public string? End { get; set; }
 }
@@ -467,6 +469,7 @@ public sealed class Import
     [JsonPropertyName("object")]
     public string? Object { get; set; }
 
+    /// <summary>`processing` until every item is done, then `completed`. The counts and errors are filled in when it completes.</summary>
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
@@ -474,11 +477,11 @@ public sealed class Import
     [JsonPropertyName("total")]
     public long? Total { get; set; }
 
-    /// <summary>Appointments created so far.</summary>
+    /// <summary>Appointments created.</summary>
     [JsonPropertyName("created")]
     public long? Created { get; set; }
 
-    /// <summary>Appointments updated so far, because their `external_id` already existed.</summary>
+    /// <summary>Appointments updated, or left as they were, because their `external_id` already existed.</summary>
     [JsonPropertyName("updated")]
     public long? Updated { get; set; }
 
@@ -598,7 +601,7 @@ public sealed class FirstContact
     public long? HoursBefore { get; set; }
 }
 
-/// <summary>What an appointment is. Sets how the time is shown and the instructions added to the message.</summary>
+/// <summary>What an appointment is. Sets the name and how the time is shown in messages, and what the customer may answer.</summary>
 public sealed class AppointmentType
 {
     /// <summary>Your id for the type, such as `delivery`. Sent with each appointment.</summary>
@@ -624,7 +627,7 @@ public sealed class AppointmentType
     [JsonPropertyName("place")]
     public string? Place { get; set; }
 
-    /// <summary>What the customer should bring or prepare. Used by the `{instructions}` variable in templates.</summary>
+    /// <summary>What the customer should bring or prepare. Stored and returned; not included in messages today.</summary>
     [JsonPropertyName("instructions")]
     public string? Instructions { get; set; }
 
@@ -632,7 +635,7 @@ public sealed class AppointmentType
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
-    /// <summary>Whether the customer may cancel. Off for deliveries such as a parcel or a mattress; then a "no" asks for another day (if reschedulable) or goes to your team.</summary>
+    /// <summary>Whether the customer may cancel. Off for deliveries such as a parcel or a mattress; messages then do not offer it, and on a call a "no" is taken as a request for another day (if `reschedulable`).</summary>
     [JsonPropertyName("cancellable")]
     public bool? Cancellable { get; set; }
 
@@ -646,7 +649,7 @@ public sealed class AppointmentType
 
 public sealed class AppointmentTypeCreate
 {
-    /// <summary>Lowercase letters, numbers, `-` and `_`. Cannot change later.</summary>
+    /// <summary>1 to 40 lowercase letters, numbers, `-` and `_`. Cannot change later.</summary>
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
@@ -666,7 +669,7 @@ public sealed class AppointmentTypeCreate
     [JsonPropertyName("place")]
     public string? Place { get; set; }
 
-    /// <summary>Optional instructions for the customer.</summary>
+    /// <summary>Optional instructions for the customer. Not included in messages today.</summary>
     [JsonPropertyName("instructions")]
     public string? Instructions { get; set; }
 
@@ -691,7 +694,7 @@ public sealed class AppointmentTypeUpdate
     [JsonPropertyName("minutes")]
     public long? Minutes { get; set; }
 
-    /// <summary>New instructions. An empty string removes them.</summary>
+    /// <summary>New instructions. An empty string clears them.</summary>
     [JsonPropertyName("instructions")]
     public string? Instructions { get; set; }
 
@@ -726,7 +729,7 @@ public sealed class AppointmentTypeList
     public List<AppointmentType>? Data { get; set; }
 }
 
-/// <summary>A centre, shop or depot. Where location appointments happen, and the phone a call is passed to when the customer wants a person.</summary>
+/// <summary>A centre, shop or depot where location appointments happen.</summary>
 public sealed class Location
 {
     /// <summary>Your id for the location, such as `bilbao`.</summary>
@@ -740,11 +743,11 @@ public sealed class Location
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
-    /// <summary>Address used in the messages for appointments held there.</summary>
+    /// <summary>Address shown in the email and on the answer page for appointments held there.</summary>
     [JsonPropertyName("address")]
     public string? Address { get; set; }
 
-    /// <summary>Where calls are passed when the customer asks for a person. Without it, Yesly offers a call back and flags the appointment for your team.</summary>
+    /// <summary>Phone to pass calls to when the customer asks for a person. Stored and returned; live calls do not transfer today.</summary>
     [JsonPropertyName("transfer_phone")]
     public string? TransferPhone { get; set; }
 
@@ -754,7 +757,7 @@ public sealed class Location
 
 public sealed class LocationCreate
 {
-    /// <summary>Lowercase letters, numbers, `-` and `_`. Cannot change later.</summary>
+    /// <summary>1 to 40 lowercase letters, numbers, `-` and `_`. Cannot change later.</summary>
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
@@ -766,7 +769,7 @@ public sealed class LocationCreate
     [JsonPropertyName("address")]
     public string? Address { get; set; }
 
-    /// <summary>Phone for call transfers, E.164.</summary>
+    /// <summary>Phone for call transfers, E.164. Not checked; live calls do not transfer today.</summary>
     [JsonPropertyName("transfer_phone")]
     public string? TransferPhone { get; set; }
 }
@@ -781,7 +784,7 @@ public sealed class LocationUpdate
     [JsonPropertyName("address")]
     public string? Address { get; set; }
 
-    /// <summary>New transfer phone, E.164. An empty string removes it.</summary>
+    /// <summary>New transfer phone, E.164. An empty string or `null` removes it.</summary>
     [JsonPropertyName("transfer_phone")]
     public string? TransferPhone { get; set; }
 }
@@ -814,11 +817,11 @@ public sealed class EventBase
     [JsonPropertyName("object")]
     public string? Object { get; set; }
 
-    /// <summary>- `appointment.created`: created by API, import, CSV or in the dashboard. - `appointment.confirmed`: the customer confirmed. - `appointment.rescheduled`: the customer moved it to another slot. - `appointment.reschedule_requested`: the customer asked for another day; set the new slot. - `appointment.cancelled`: cancelled by the customer or by you. - `appointment.no_reply`: no channel got an answer. - `message.sent`: a WhatsApp message or SMS left Yesly. - `message.delivered`: the carrier or WhatsApp confirmed delivery. - `message.failed`: it could not be delivered; the next channel runs. - `call.started`: a call started ringing. - `call.completed`: a call ended, with its duration and outcome. - `call.transferred`: the call was passed to the location's phone. - `balance.low`: the balance went below your alert threshold. - `balance.topped_up`: a top-up was paid.</summary>
+    /// <summary>- `appointment.created`: created by API, import, CSV or in the dashboard. - `appointment.confirmed`: the customer confirmed. - `appointment.rescheduled`: the customer moved it to another slot. - `appointment.reschedule_requested`: the customer asked for another day without picking a free time; set the new slot. - `appointment.cancelled`: cancelled by the customer or by you. - `appointment.no_reply`: no channel got an answer, or the call was transferred. - `message.sent`: a WhatsApp message, SMS or email left Yesly. - `message.delivered`: the carrier or WhatsApp confirmed delivery. - `message.failed`: it could not be sent or delivered; the next channel runs. - `call.started`: Yesly placed a call. - `call.completed`: a call got an answer or ended without one, with its `outcome`. - `call.transferred`: the call was passed to the location's phone (today only with the test number `+34600000006`). - `balance.low`: the balance went below your alert threshold. - `balance.topped_up`: a top-up was paid.</summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Version used to render `data`, that of the endpoint.</summary>
+    /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
 
@@ -848,7 +851,7 @@ public sealed class AppointmentEvent
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Version used to render `data`, that of the endpoint.</summary>
+    /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
 
@@ -886,7 +889,7 @@ public sealed class MessageEvent
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Version used to render `data`, that of the endpoint.</summary>
+    /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
 
@@ -906,21 +909,62 @@ public sealed class MessageEvent
 /// <summary>The object the event is about, at the time of the event.</summary>
 public sealed class MessageEventData
 {
-    /// <summary>A WhatsApp message or SMS, in `message.*` events. The reference does not publish its full shape; like every event object it carries the appointment's `external_id` and `metadata`.</summary>
+    /// <summary>A WhatsApp message, SMS or email, in `message.*` events. It is one of the appointment's attempts, as it stands when the event is recorded.</summary>
     [JsonPropertyName("message")]
     public Message? Message { get; set; }
 }
 
-/// <summary>A WhatsApp message or SMS, in `message.*` events. The reference does not publish its full shape; like every event object it carries the appointment's `external_id` and `metadata`.</summary>
+/// <summary>A WhatsApp message, SMS or email, in `message.*` events. It is one of the appointment's attempts, as it stands when the event is recorded.</summary>
 public sealed class Message
 {
+    /// <summary>Id of the attempt, prefixed `att_`.</summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("object")]
+    public string? Object { get; set; }
+
+    /// <summary>Id of the appointment, prefixed `apt_`.</summary>
+    [JsonPropertyName("appointment")]
+    public string? Appointment { get; set; }
+
     /// <summary>The appointment's `external_id`.</summary>
     [JsonPropertyName("external_id")]
     public string? ExternalId { get; set; }
 
+    [JsonPropertyName("channel")]
+    public string? Channel { get; set; }
+
+    /// <summary>The attempt's status, as in the appointment's `attempts`.</summary>
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    /// <summary>When it was handed to the provider, or `null`.</summary>
+    [JsonPropertyName("sent_at")]
+    public string? SentAt { get; set; }
+
+    /// <summary>Cost in euros. `0` when it was refused when sending (refunded).</summary>
+    [JsonPropertyName("cost")]
+    public double? Cost { get; set; }
+
+    /// <summary>Why it failed. Only on failed messages.</summary>
+    [JsonPropertyName("error")]
+    public MessageError? Error { get; set; }
+
     /// <summary>Your own key-value pairs, returned unchanged. Up to 20 keys, keys up to 40 characters, values up to 500 characters, strings only. Do not put personal data here.</summary>
     [JsonPropertyName("metadata")]
     public Dictionary<string, string>? Metadata { get; set; }
+}
+
+/// <summary>Why it failed. Only on failed messages.</summary>
+public sealed class MessageError
+{
+    /// <summary>Such as `no_email`, `provider_error`, `twilio_63024` or `ses_MessageRejected`.</summary>
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
 }
 
 /// <summary>A `call.*` event. `data.call` is the call.</summary>
@@ -936,7 +980,7 @@ public sealed class CallEvent
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Version used to render `data`, that of the endpoint.</summary>
+    /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
 
@@ -956,15 +1000,15 @@ public sealed class CallEvent
 /// <summary>The object the event is about, at the time of the event.</summary>
 public sealed class CallEventData
 {
-    /// <summary>A call to the customer, in `call.*` events.</summary>
+    /// <summary>A call to the customer, in `call.*` events. It is one of the appointment's attempts.</summary>
     [JsonPropertyName("call")]
     public Call? Call { get; set; }
 }
 
-/// <summary>A call to the customer, in `call.*` events.</summary>
+/// <summary>A call to the customer, in `call.*` events. It is one of the appointment's attempts.</summary>
 public sealed class Call
 {
-    /// <summary>Unique id, prefixed `call_`.</summary>
+    /// <summary>Id of the attempt, prefixed `att_`.</summary>
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
@@ -979,29 +1023,35 @@ public sealed class Call
     [JsonPropertyName("external_id")]
     public string? ExternalId { get; set; }
 
+    /// <summary>When Yesly placed the call.</summary>
     [JsonPropertyName("started_at")]
     public string? StartedAt { get; set; }
 
+    /// <summary>Seconds of talk, once the call has ended. Missing until then.</summary>
     [JsonPropertyName("duration_seconds")]
     public long? DurationSeconds { get; set; }
 
-    /// <summary>Where the call was passed, on `call.transferred`.</summary>
+    /// <summary>Where the call was passed, only on a transferred call.</summary>
     [JsonPropertyName("transferred_to")]
     public CallTransferredTo? TransferredTo { get; set; }
+
+    /// <summary>Only on `call.completed`. `answered` when the customer gave an answer on the call, otherwise `no_answer`.</summary>
+    [JsonPropertyName("outcome")]
+    public string? Outcome { get; set; }
 
     /// <summary>Your own key-value pairs, returned unchanged. Up to 20 keys, keys up to 40 characters, values up to 500 characters, strings only. Do not put personal data here.</summary>
     [JsonPropertyName("metadata")]
     public Dictionary<string, string>? Metadata { get; set; }
 }
 
-/// <summary>Where the call was passed, on `call.transferred`.</summary>
+/// <summary>Where the call was passed, only on a transferred call.</summary>
 public sealed class CallTransferredTo
 {
     /// <summary>Location id.</summary>
     [JsonPropertyName("location")]
     public string? Location { get; set; }
 
-    /// <summary>Phone number in E.164 format, such as `+34612345678`.</summary>
+    /// <summary>The location's `transfer_phone`.</summary>
     [JsonPropertyName("phone")]
     public string? Phone { get; set; }
 }
@@ -1019,7 +1069,7 @@ public sealed class BalanceEvent
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Version used to render `data`, that of the endpoint.</summary>
+    /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
 
@@ -1065,20 +1115,20 @@ public sealed class Balance
     [JsonPropertyName("low_balance_threshold")]
     public double? LowBalanceThreshold { get; set; }
 
+    /// <summary>Not available yet. `enabled` is `false` and `below` and `amount` are `null`.</summary>
     [JsonPropertyName("auto_top_up")]
     public BalanceAutoTopUp? AutoTopUp { get; set; }
 }
 
+/// <summary>Not available yet. `enabled` is `false` and `below` and `amount` are `null`.</summary>
 public sealed class BalanceAutoTopUp
 {
     [JsonPropertyName("enabled")]
     public bool? Enabled { get; set; }
 
-    /// <summary>Top up when the balance goes below this.</summary>
     [JsonPropertyName("below")]
     public double? Below { get; set; }
 
-    /// <summary>Amount topped up.</summary>
     [JsonPropertyName("amount")]
     public double? Amount { get; set; }
 }
@@ -1096,7 +1146,7 @@ public sealed class Event
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Version used to render `data`, that of the endpoint.</summary>
+    /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
 
@@ -1118,11 +1168,11 @@ public sealed class EventData
     [JsonPropertyName("appointment")]
     public Appointment? Appointment { get; set; }
 
-    /// <summary>A WhatsApp message or SMS, in `message.*` events. The reference does not publish its full shape; like every event object it carries the appointment's `external_id` and `metadata`.</summary>
+    /// <summary>A WhatsApp message, SMS or email, in `message.*` events. It is one of the appointment's attempts, as it stands when the event is recorded.</summary>
     [JsonPropertyName("message")]
     public Message? Message { get; set; }
 
-    /// <summary>A call to the customer, in `call.*` events.</summary>
+    /// <summary>A call to the customer, in `call.*` events. It is one of the appointment's attempts.</summary>
     [JsonPropertyName("call")]
     public Call? Call { get; set; }
 
@@ -1175,10 +1225,11 @@ public sealed class WebhookEndpoint
     [JsonPropertyName("enabled_events")]
     public List<string>? EnabledEvents { get; set; }
 
+    /// <summary>`disabled` by you, or by Yesly after 50 failed deliveries in a row. A disabled endpoint gets no events and its pending retries are dropped.</summary>
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
-    /// <summary>Version used to render the events it receives.</summary>
+    /// <summary>Stored as sent (default `2026-10-01`). Events are always rendered with `2026-10-01`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
 
@@ -1196,7 +1247,7 @@ public sealed class WebhookEndpoint
 
 public sealed class WebhookEndpointCreate
 {
-    /// <summary>HTTPS URL. Self-signed certificates are refused.</summary>
+    /// <summary>HTTPS URL on a public host, without a user name or password (`url_invalid` otherwise). Deliveries to a self-signed certificate fail.</summary>
     [JsonPropertyName("url")]
     public string? Url { get; set; }
 
@@ -1208,7 +1259,7 @@ public sealed class WebhookEndpointCreate
     [JsonPropertyName("description")]
     public string? Description { get; set; }
 
-    /// <summary>Defaults to your account's version.</summary>
+    /// <summary>Stored and returned as sent; default `2026-10-01`. It does not change the events.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
 }
@@ -1227,7 +1278,7 @@ public sealed class WebhookEndpointUpdate
     [JsonPropertyName("description")]
     public string? Description { get; set; }
 
-    /// <summary>`true` stops sending events to it until you enable it again.</summary>
+    /// <summary>`true` stops sending events to it and drops its pending retries. `false` enables it again and resets its count of failed deliveries.</summary>
     [JsonPropertyName("disabled")]
     public bool? Disabled { get; set; }
 }
@@ -1260,7 +1311,7 @@ public sealed class WebhookTest
     [JsonPropertyName("event")]
     public string? Event { get; set; }
 
-    /// <summary>HTTP status your endpoint answered with.</summary>
+    /// <summary>HTTP status your endpoint answered with. `null` when there was no answer; see `error`. Redirects are not followed.</summary>
     [JsonPropertyName("status_code")]
     public long? StatusCode { get; set; }
 
@@ -1268,9 +1319,13 @@ public sealed class WebhookTest
     [JsonPropertyName("duration_ms")]
     public long? DurationMs { get; set; }
 
-    /// <summary>Body your endpoint answered with.</summary>
+    /// <summary>Body your endpoint answered with, up to 2,000 characters. `null` when there was no answer.</summary>
     [JsonPropertyName("response_body")]
     public string? ResponseBody { get; set; }
+
+    /// <summary>Only when there was no answer.</summary>
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
 }
 
 public sealed class DeletedObject
@@ -1285,7 +1340,7 @@ public sealed class DeletedObject
     public bool? Deleted { get; set; }
 }
 
-/// <summary>A charge (`usage`) or a top-up. Charges point to the appointment and its `external_id`.</summary>
+/// <summary>A charge (`usage`), a top-up or an adjustment. Charges point to the appointment and its `external_id`; adjustments do not.</summary>
 public sealed class BalanceTransaction
 {
     /// <summary>Unique id, prefixed `btx_`.</summary>
@@ -1295,6 +1350,7 @@ public sealed class BalanceTransaction
     [JsonPropertyName("object")]
     public string? Object { get; set; }
 
+    /// <summary>`usage` (a charge), `top_up` (a card top-up) or `adjustment` (money given back, such as a refund for a message refused when sending).</summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
@@ -1302,7 +1358,7 @@ public sealed class BalanceTransaction
     [JsonPropertyName("channel")]
     public string? Channel { get; set; }
 
-    /// <summary>In euros. Negative for charges, positive for top-ups.</summary>
+    /// <summary>In euros. Negative for charges, positive for top-ups and adjustments.</summary>
     [JsonPropertyName("amount")]
     public double? Amount { get; set; }
 
@@ -1322,7 +1378,7 @@ public sealed class BalanceTransaction
     [JsonPropertyName("external_id")]
     public string? ExternalId { get; set; }
 
-    /// <summary>Invoice number, on `top_up`.</summary>
+    /// <summary>Id of the Stripe invoice, on `top_up` when Stripe issued one.</summary>
     [JsonPropertyName("invoice")]
     public string? Invoice { get; set; }
 
@@ -1348,7 +1404,7 @@ public sealed class BalanceTransactionList
     public List<BalanceTransaction>? Data { get; set; }
 }
 
-/// <summary>Outcomes, which channel got the answer, how long customers took, usage and spend. Days follow your account's time zone.</summary>
+/// <summary>Outcomes, which channel got the answer, how long customers took, usage and spend. Appointments count on the day of their slot, in your account's time zone.</summary>
 public sealed class AnalyticsSummary
 {
     [JsonPropertyName("object")]
@@ -1374,14 +1430,21 @@ public sealed class AnalyticsSummary
     [JsonPropertyName("answered_by")]
     public AnalyticsSummaryAnsweredBy? AnsweredBy { get; set; }
 
+    /// <summary>Median minutes from `first_contact_at` to the answer, or `null` without answers.</summary>
     [JsonPropertyName("median_minutes_to_answer")]
-    public double? MedianMinutesToAnswer { get; set; }
+    public long? MedianMinutesToAnswer { get; set; }
 
+    /// <summary>Messages sent (not failed) and started call minutes.</summary>
     [JsonPropertyName("usage")]
     public AnalyticsSummaryUsage? Usage { get; set; }
 
+    /// <summary>What the appointments cost. `0` in test mode.</summary>
     [JsonPropertyName("spend")]
     public AnalyticsSummarySpend? Spend { get; set; }
+
+    /// <summary>One item per day of the range, oldest first.</summary>
+    [JsonPropertyName("days")]
+    public List<AnalyticsSummaryDaysItem>? Days { get; set; }
 }
 
 /// <summary>Appointments by status.</summary>
@@ -1422,6 +1485,7 @@ public sealed class AnalyticsSummaryAnsweredBy
     public long? Email { get; set; }
 }
 
+/// <summary>Messages sent (not failed) and started call minutes.</summary>
 public sealed class AnalyticsSummaryUsage
 {
     [JsonPropertyName("whatsapp_messages")]
@@ -1437,6 +1501,7 @@ public sealed class AnalyticsSummaryUsage
     public long? EmailMessages { get; set; }
 }
 
+/// <summary>What the appointments cost. `0` in test mode.</summary>
 public sealed class AnalyticsSummarySpend
 {
     [JsonPropertyName("amount")]
@@ -1444,6 +1509,28 @@ public sealed class AnalyticsSummarySpend
 
     [JsonPropertyName("currency")]
     public string? Currency { get; set; }
+}
+
+public sealed class AnalyticsSummaryDaysItem
+{
+    [JsonPropertyName("date")]
+    public string? Date { get; set; }
+
+    /// <summary>Appointments whose slot is on this day.</summary>
+    [JsonPropertyName("appointments")]
+    public long? Appointments { get; set; }
+
+    [JsonPropertyName("confirmed")]
+    public long? Confirmed { get; set; }
+
+    [JsonPropertyName("rescheduled")]
+    public long? Rescheduled { get; set; }
+
+    [JsonPropertyName("cancelled")]
+    public long? Cancelled { get; set; }
+
+    [JsonPropertyName("no_reply")]
+    public long? NoReply { get; set; }
 }
 
 /// <summary>Parameters of `GET /appointments`.</summary>
@@ -1457,11 +1544,11 @@ public sealed class AppointmentListOptions
     [JsonPropertyName("date")]
     public string? Date { get; set; }
 
-    /// <summary>Slot starts on or after this time.</summary>
+    /// <summary>Slot starts on or after this day or time. A day starts at 00:00 in your account's time zone.</summary>
     [JsonPropertyName("from")]
     public string? From { get; set; }
 
-    /// <summary>Slot starts before this time.</summary>
+    /// <summary>Slot starts on or before this day or time. A day ends at 23:59:59 in your account's time zone.</summary>
     [JsonPropertyName("to")]
     public string? To { get; set; }
 
@@ -1501,7 +1588,7 @@ public sealed class AppointmentCreateOptions
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Location id. Required when the type happens at one of your locations; otherwise optional, and used to pass calls to that location's phone.</summary>
+    /// <summary>Location id, optional. For a type whose `place` is `location`, its name and address are shown in the email and on the answer page.</summary>
     [JsonPropertyName("location")]
     public string? Location { get; set; }
 
@@ -1511,7 +1598,7 @@ public sealed class AppointmentCreateOptions
     [JsonPropertyName("customer")]
     public AppointmentCreateOptionsCustomer? Customer { get; set; }
 
-    /// <summary>Override the channel order for this appointment, such as `["whatsapp", "voice"]`. Only channels enabled in your account.</summary>
+    /// <summary>Override the channel order for this appointment, such as `["whatsapp", "voice"]`. At least one, without repeats. Without it, your account's channels.</summary>
     [JsonPropertyName("channels")]
     public List<string>? Channels { get; set; }
 
@@ -1526,7 +1613,7 @@ public sealed class AppointmentCreateOptionsSlot
     [JsonPropertyName("start")]
     public string? Start { get; set; }
 
-    /// <summary>End of the window. Leave it out for exact-time types; it is computed from the type's duration.</summary>
+    /// <summary>End of the window, after `start`. Without it, `start` plus the type's `minutes` (60 if the account has no types).</summary>
     [JsonPropertyName("end")]
     public string? End { get; set; }
 }
@@ -1553,7 +1640,7 @@ public sealed class AppointmentUpdateOptions
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>New location id.</summary>
+    /// <summary>New location id; `null` removes it.</summary>
     [JsonPropertyName("location")]
     public string? Location { get; set; }
 
@@ -1563,11 +1650,11 @@ public sealed class AppointmentUpdateOptions
     [JsonPropertyName("customer")]
     public AppointmentUpdateOptionsCustomer? Customer { get; set; }
 
-    /// <summary>New channel order for this appointment.</summary>
+    /// <summary>New channel order for this appointment. At least one, without repeats.</summary>
     [JsonPropertyName("channels")]
     public List<string>? Channels { get; set; }
 
-    /// <summary>Keys to set, merged with the existing ones. An empty string removes the key.</summary>
+    /// <summary>Keys to set, merged with the existing ones. A value of `null` or an empty string removes the key. At most 20 keys after the merge.</summary>
     [JsonPropertyName("metadata")]
     public Dictionary<string, string>? Metadata { get; set; }
 }
@@ -1578,7 +1665,7 @@ public sealed class AppointmentUpdateOptionsSlot
     [JsonPropertyName("start")]
     public string? Start { get; set; }
 
-    /// <summary>New end of the window.</summary>
+    /// <summary>New end of the window. Without it, the new start plus the current length (or the new type's `minutes`, if you change the type).</summary>
     [JsonPropertyName("end")]
     public string? End { get; set; }
 }
@@ -1657,7 +1744,7 @@ public sealed class SlotCreateOptions
 /// <summary>Parameters of `POST /appointment_types`.</summary>
 public sealed class AppointmentTypeCreateOptions
 {
-    /// <summary>Lowercase letters, numbers, `-` and `_`. Cannot change later.</summary>
+    /// <summary>1 to 40 lowercase letters, numbers, `-` and `_`. Cannot change later.</summary>
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
@@ -1677,7 +1764,7 @@ public sealed class AppointmentTypeCreateOptions
     [JsonPropertyName("place")]
     public string? Place { get; set; }
 
-    /// <summary>Optional instructions for the customer.</summary>
+    /// <summary>Optional instructions for the customer. Not included in messages today.</summary>
     [JsonPropertyName("instructions")]
     public string? Instructions { get; set; }
 
@@ -1703,7 +1790,7 @@ public sealed class AppointmentTypeUpdateOptions
     [JsonPropertyName("minutes")]
     public long? Minutes { get; set; }
 
-    /// <summary>New instructions. An empty string removes them.</summary>
+    /// <summary>New instructions. An empty string clears them.</summary>
     [JsonPropertyName("instructions")]
     public string? Instructions { get; set; }
 
@@ -1723,7 +1810,7 @@ public sealed class AppointmentTypeUpdateOptions
 /// <summary>Parameters of `POST /locations`.</summary>
 public sealed class LocationCreateOptions
 {
-    /// <summary>Lowercase letters, numbers, `-` and `_`. Cannot change later.</summary>
+    /// <summary>1 to 40 lowercase letters, numbers, `-` and `_`. Cannot change later.</summary>
     [JsonPropertyName("id")]
     public string? Id { get; set; }
 
@@ -1735,7 +1822,7 @@ public sealed class LocationCreateOptions
     [JsonPropertyName("address")]
     public string? Address { get; set; }
 
-    /// <summary>Phone for call transfers, E.164.</summary>
+    /// <summary>Phone for call transfers, E.164. Not checked; live calls do not transfer today.</summary>
     [JsonPropertyName("transfer_phone")]
     public string? TransferPhone { get; set; }
 }
@@ -1751,27 +1838,15 @@ public sealed class LocationUpdateOptions
     [JsonPropertyName("address")]
     public string? Address { get; set; }
 
-    /// <summary>New transfer phone, E.164. An empty string removes it.</summary>
+    /// <summary>New transfer phone, E.164. An empty string or `null` removes it.</summary>
     [JsonPropertyName("transfer_phone")]
     public string? TransferPhone { get; set; }
-}
-
-/// <summary>Parameters of `GET /webhook_endpoints`.</summary>
-public sealed class WebhookEndpointListOptions
-{
-    /// <summary>Between 1 and 100. Default 20.</summary>
-    [JsonPropertyName("limit")]
-    public long? Limit { get; set; }
-
-    /// <summary>Cursor: the id of the last item of the previous page.</summary>
-    [JsonPropertyName("starting_after")]
-    public string? StartingAfter { get; set; }
 }
 
 /// <summary>Parameters of `POST /webhook_endpoints`.</summary>
 public sealed class WebhookEndpointCreateOptions
 {
-    /// <summary>HTTPS URL. Self-signed certificates are refused.</summary>
+    /// <summary>HTTPS URL on a public host, without a user name or password (`url_invalid` otherwise). Deliveries to a self-signed certificate fail.</summary>
     [JsonPropertyName("url")]
     public string? Url { get; set; }
 
@@ -1783,7 +1858,7 @@ public sealed class WebhookEndpointCreateOptions
     [JsonPropertyName("description")]
     public string? Description { get; set; }
 
-    /// <summary>Defaults to your account's version.</summary>
+    /// <summary>Stored and returned as sent; default `2026-10-01`. It does not change the events.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
 }
@@ -1803,7 +1878,7 @@ public sealed class WebhookEndpointUpdateOptions
     [JsonPropertyName("description")]
     public string? Description { get; set; }
 
-    /// <summary>`true` stops sending events to it until you enable it again.</summary>
+    /// <summary>`true` stops sending events to it and drops its pending retries. `false` enables it again and resets its count of failed deliveries.</summary>
     [JsonPropertyName("disabled")]
     public bool? Disabled { get; set; }
 }
@@ -1819,7 +1894,7 @@ public sealed class WebhookEndpointTestOptions
 /// <summary>Parameters of `GET /events`.</summary>
 public sealed class EventListOptions
 {
-    /// <summary>Only this event type. `appointment.*` matches a whole group.</summary>
+    /// <summary>Only this event type, matched exactly.</summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
@@ -1827,7 +1902,7 @@ public sealed class EventListOptions
     [JsonPropertyName("appointment")]
     public string? Appointment { get; set; }
 
-    /// <summary>Events created on or after this time.</summary>
+    /// <summary>Events created on or after this time. A day alone means 00:00 UTC.</summary>
     [JsonPropertyName("from")]
     public string? From { get; set; }
 
@@ -1843,7 +1918,7 @@ public sealed class EventListOptions
 /// <summary>Parameters of `GET /balance/transactions`.</summary>
 public sealed class BalanceListTransactionsOptions
 {
-    /// <summary>`usage` or `top_up`.</summary>
+    /// <summary>`usage`, `top_up` or `adjustment`.</summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
@@ -1851,11 +1926,11 @@ public sealed class BalanceListTransactionsOptions
     [JsonPropertyName("appointment")]
     public string? Appointment { get; set; }
 
-    /// <summary>On or after this day or time.</summary>
+    /// <summary>On or after this day or time. A day alone means 00:00 UTC.</summary>
     [JsonPropertyName("from")]
     public string? From { get; set; }
 
-    /// <summary>Before this day or time.</summary>
+    /// <summary>On or before this day or time. A day alone means 23:59:59 UTC.</summary>
     [JsonPropertyName("to")]
     public string? To { get; set; }
 
