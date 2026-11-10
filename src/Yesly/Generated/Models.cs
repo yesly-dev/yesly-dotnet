@@ -275,7 +275,7 @@ public sealed class Attempt
     [JsonPropertyName("channel")]
     public string? Channel { get; set; }
 
-    /// <summary>`queued` (not handed over yet), `sent`, `delivered`, `read` (WhatsApp), `answered`, `no_answer` (calls), `failed`, or `transferred` (calls passed to a location's phone).</summary>
+    /// <summary>`queued` (not handed over yet), `sent`, `delivered`, `read` (WhatsApp), `answered`, `no_answer` (calls the customer did not pick up), `voicemail` (calls a voicemail picked up: hung up without leaving a message, free), `unresolved` (calls picked up that ended without an answer), `failed`, or `transferred` (calls passed to a location's phone).</summary>
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
@@ -1116,7 +1116,7 @@ public sealed class Call
     [JsonPropertyName("transferred_to")]
     public CallTransferredTo? TransferredTo { get; set; }
 
-    /// <summary>Only on `call.completed`. `answered` when the customer gave an answer on the call, otherwise `no_answer`.</summary>
+    /// <summary>Only on `call.completed`. `answered` when the customer gave an answer on the call, `unresolved` when they picked up but gave none, `voicemail` when a voicemail picked up, `no_answer` when nobody did.</summary>
     [JsonPropertyName("outcome")]
     public string? Outcome { get; set; }
 
