@@ -10,7 +10,6 @@ using System.Text.Json.Serialization;
 namespace Yesly;
 
 [JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, NumberHandling = JsonNumberHandling.AllowReadingFromString)]
-[JsonSerializable(typeof(Subject))]
 [JsonSerializable(typeof(ListEnvelope))]
 [JsonSerializable(typeof(AppointmentSlot))]
 [JsonSerializable(typeof(Customer))]
