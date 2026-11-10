@@ -9,6 +9,18 @@ using System.Text.Json.Serialization;
 
 namespace Yesly;
 
+/// <summary>The object an event or charge is about.</summary>
+public sealed class Subject
+{
+    /// <summary>Its type, as in its own `object` field. Today always `appointment`.</summary>
+    [JsonPropertyName("object")]
+    public string? Object { get; set; }
+
+    /// <summary>Its id.</summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+}
+
 /// <summary>A page of a list. Keep paginating with `starting_after` while `has_more` is `true`.</summary>
 public sealed class ListEnvelope
 {
@@ -902,6 +914,14 @@ public sealed class EventBase
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
+    /// <summary>The use case the event belongs to; `null` for the account's own `balance.*` events.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
+    /// <summary>What the event is about (the appointment, also for `message.*` and `call.*`); `null` for `balance.*` events.</summary>
+    [JsonPropertyName("subject")]
+    public Subject? Subject { get; set; }
+
     /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
@@ -931,6 +951,14 @@ public sealed class AppointmentEvent
 
     [JsonPropertyName("type")]
     public string? Type { get; set; }
+
+    /// <summary>The use case the event belongs to; `null` for the account's own `balance.*` events.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
+    /// <summary>What the event is about (the appointment, also for `message.*` and `call.*`); `null` for `balance.*` events.</summary>
+    [JsonPropertyName("subject")]
+    public Subject? Subject { get; set; }
 
     /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
@@ -969,6 +997,14 @@ public sealed class MessageEvent
 
     [JsonPropertyName("type")]
     public string? Type { get; set; }
+
+    /// <summary>The use case the event belongs to; `null` for the account's own `balance.*` events.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
+    /// <summary>What the event is about (the appointment, also for `message.*` and `call.*`); `null` for `balance.*` events.</summary>
+    [JsonPropertyName("subject")]
+    public Subject? Subject { get; set; }
 
     /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
@@ -1061,6 +1097,14 @@ public sealed class CallEvent
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
+    /// <summary>The use case the event belongs to; `null` for the account's own `balance.*` events.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
+    /// <summary>What the event is about (the appointment, also for `message.*` and `call.*`); `null` for `balance.*` events.</summary>
+    [JsonPropertyName("subject")]
+    public Subject? Subject { get; set; }
+
     /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
@@ -1150,6 +1194,14 @@ public sealed class BalanceEvent
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
+    /// <summary>The use case the event belongs to; `null` for the account's own `balance.*` events.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
+    /// <summary>What the event is about (the appointment, also for `message.*` and `call.*`); `null` for `balance.*` events.</summary>
+    [JsonPropertyName("subject")]
+    public Subject? Subject { get; set; }
+
     /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
@@ -1227,6 +1279,14 @@ public sealed class Event
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
+    /// <summary>The use case the event belongs to; `null` for the account's own `balance.*` events.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
+    /// <summary>What the event is about (the appointment, also for `message.*` and `call.*`); `null` for `balance.*` events.</summary>
+    [JsonPropertyName("subject")]
+    public Subject? Subject { get; set; }
+
     /// <summary>Always `2026-10-01`, the only version, whatever the endpoint's `api_version`.</summary>
     [JsonPropertyName("api_version")]
     public string? ApiVersion { get; set; }
@@ -1302,7 +1362,7 @@ public sealed class WebhookEndpoint
     [JsonPropertyName("description")]
     public string? Description { get; set; }
 
-    /// <summary>Event types sent to the endpoint. `["*"]` for all.</summary>
+    /// <summary>Event types sent to the endpoint. `["*"]` for all; a family such as `appointment.*` for every event of one object, including types added later.</summary>
     [JsonPropertyName("enabled_events")]
     public List<string>? EnabledEvents { get; set; }
 
@@ -1332,7 +1392,7 @@ public sealed class WebhookEndpointCreate
     [JsonPropertyName("url")]
     public string? Url { get; set; }
 
-    /// <summary>Event types sent to the endpoint. `["*"]` for all.</summary>
+    /// <summary>Event types sent to the endpoint. `["*"]` for all; a family such as `appointment.*` for every event of one object, including types added later.</summary>
     [JsonPropertyName("enabled_events")]
     public List<string>? EnabledEvents { get; set; }
 
@@ -1421,7 +1481,7 @@ public sealed class DeletedObject
     public bool? Deleted { get; set; }
 }
 
-/// <summary>A charge (`usage`), a top-up or an adjustment. Charges point to the appointment and its `external_id`; adjustments do not.</summary>
+/// <summary>A charge (`usage`), a top-up or an adjustment. Charges point to their use case, the appointment and its `external_id`; adjustments do not.</summary>
 public sealed class BalanceTransaction
 {
     /// <summary>Unique id, prefixed `btx_`.</summary>
@@ -1442,6 +1502,14 @@ public sealed class BalanceTransaction
     /// <summary>In euros. Negative for charges, positive for top-ups and adjustments.</summary>
     [JsonPropertyName("amount")]
     public double? Amount { get; set; }
+
+    /// <summary>The use case charged, on `usage`; `null` on top-ups and adjustments, which belong to the account.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
+    /// <summary>The object charged, on `usage` (the appointment); `null` otherwise.</summary>
+    [JsonPropertyName("subject")]
+    public Subject? Subject { get; set; }
 
     /// <summary>Units charged, on `usage`.</summary>
     [JsonPropertyName("quantity")]
@@ -1490,6 +1558,10 @@ public sealed class AnalyticsSummary
 {
     [JsonPropertyName("object")]
     public string? Object { get; set; }
+
+    /// <summary>A use case Yesly contacts customers for. Today only `appointments`; more values will be added.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
 
     [JsonPropertyName("range")]
     public string? Range { get; set; }
@@ -1983,7 +2055,7 @@ public sealed class WebhookEndpointCreateOptions
     [JsonPropertyName("url")]
     public string? Url { get; set; }
 
-    /// <summary>Event types sent to the endpoint. `["*"]` for all.</summary>
+    /// <summary>Event types sent to the endpoint. `["*"]` for all; a family such as `appointment.*` for every event of one object, including types added later.</summary>
     [JsonPropertyName("enabled_events")]
     public List<string>? EnabledEvents { get; set; }
 
@@ -2031,7 +2103,15 @@ public sealed class EventListOptions
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Only events about this appointment.</summary>
+    /// <summary>Only events of this use case. Leaves out the account's own `balance.*` events.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
+    /// <summary>Only events about this object, by its id (today an appointment, `apt_…`).</summary>
+    [JsonPropertyName("subject")]
+    public string? Subject { get; set; }
+
+    /// <summary>Only events about this appointment. Same as `subject` with an appointment id.</summary>
     [JsonPropertyName("appointment")]
     public string? Appointment { get; set; }
 
@@ -2055,7 +2135,15 @@ public sealed class BalanceListTransactionsOptions
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
-    /// <summary>Only charges for this appointment.</summary>
+    /// <summary>Only charges of this use case. Top-ups and adjustments belong to the account and are left out.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
+    /// <summary>Only charges for this object, by its id (today an appointment, `apt_…`).</summary>
+    [JsonPropertyName("subject")]
+    public string? Subject { get; set; }
+
+    /// <summary>Only charges for this appointment. Same as `subject` with an appointment id.</summary>
     [JsonPropertyName("appointment")]
     public string? Appointment { get; set; }
 
@@ -2079,6 +2167,10 @@ public sealed class BalanceListTransactionsOptions
 /// <summary>Parameters of `GET /analytics/summary`.</summary>
 public sealed class AnalyticsRetrieveSummaryOptions
 {
+    /// <summary>The use case whose figures you want. Each use case has its own; today only `appointments`.</summary>
+    [JsonPropertyName("use_case")]
+    public string? UseCase { get; set; }
+
     /// <summary>Days covered, ending today.</summary>
     [JsonPropertyName("range")]
     public string? Range { get; set; }
