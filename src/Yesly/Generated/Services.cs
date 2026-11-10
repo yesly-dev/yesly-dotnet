@@ -30,6 +30,11 @@ public sealed class AppointmentsService
     public Task<Appointment> CreateAsync(AppointmentCreateOptions options, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<Appointment>("POST", "/appointments", null, options, false, requestOptions, cancellationToken);
 
+    /// <summary>Count appointments by status.</summary>
+    /// <remarks>How many appointments List appointments would return for each status, with the same filters (all of them but `status`, `limit` and `starting_after`). Without `date`, `from` or `to` it counts every appointment the account still keeps. Counts with whole days (`date`, or `from` and `to` as dates) or no dates, by type and location, come from counters kept as appointments change, a few seconds behind. <c>GET /appointments/counts</c></remarks>
+    public Task<AppointmentCounts> CountAsync(AppointmentCountOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.RequestAsync<AppointmentCounts>("GET", "/appointments/counts", options, null, false, requestOptions, cancellationToken);
+
     /// <summary>Retrieve an appointment.</summary>
     /// <remarks>Fetches an appointment with its attempts and answer. To find one by your own id, list with `external_id`. <c>GET /appointments/{id}</c></remarks>
     public Task<Appointment> RetrieveAsync(string id, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
@@ -44,6 +49,11 @@ public sealed class AppointmentsService
     /// <remarks>Cancels an appointment from your side, for example when the order is cancelled. Yesly stops contacting the customer at once and does not send them anything else. Attempts already made are still charged. Fires `appointment.cancelled`. <c>POST /appointments/{id}/cancel</c></remarks>
     public Task<Appointment> CancelAsync(string id, AppointmentCancelOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<Appointment>("POST", $"/appointments/{Uri.EscapeDataString(id)}/cancel", null, options, true, requestOptions, cancellationToken);
+
+    /// <summary>Get a call recording.</summary>
+    /// <remarks>A link to the audio of a conversational call (attempts with `has_recording` `true`): a WAV file, customer on the left channel and Yesly's agent on the right. The link works for 15 minutes; ask again for a new one. Recordings are kept as long as the account's retention allows and stored in the EU. Every link is logged (who and when, a member or an API key by name); owners and admins see the log in the dashboard. Needs a key with full access: a read-only key gets `403` `api_key_scope`. <c>GET /appointments/{id}/attempts/{attempt}/recording</c></remarks>
+    public Task<Recording> RecordingAsync(string id, string attempt, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.RequestAsync<Recording>("GET", $"/appointments/{Uri.EscapeDataString(id)}/attempts/{Uri.EscapeDataString(attempt)}/recording", null, null, false, requestOptions, cancellationToken);
 
     /// <summary>Import appointments.</summary>
     /// <remarks>Creates or updates up to 1,000 appointments in one request, for systems that plan the whole day at once. Each item takes the same fields as Create an appointment; items whose `external_id` already exists are updated. The import runs in the background: poll Retrieve an import. <c>POST /appointments/import</c></remarks>
@@ -172,7 +182,7 @@ public sealed class WebhookEndpointsService
         => _client.RequestAsync<DeletedObject>("DELETE", $"/webhook_endpoints/{Uri.EscapeDataString(id)}", null, null, false, requestOptions, cancellationToken);
 
     /// <summary>Send a test event.</summary>
-    /// <remarks>Sends a sample event to the endpoint, signed like a real one, and returns what it answered. Useful to check the URL and your signature check before going live. The event has the `mode` of the key that calls this, and `data` is always a sample `appointment` (with only some fields), whatever the `type`. It is not stored, so it does not appear in List events. <c>POST /webhook_endpoints/{id}/test</c></remarks>
+    /// <remarks>Sends a sample event to the endpoint, signed like a real one, and returns what it answered. Useful to check the URL and your signature check before going live. The event has the `mode` of the key that calls this, and `data` is always a sample `appointment` (with only some fields), whatever the `type`. It is not stored, so it does not appear in List events. Needs a key with full access: a read-only key gets `403` `api_key_read_only`. <c>POST /webhook_endpoints/{id}/test</c></remarks>
     public Task<WebhookTest> TestAsync(string id, WebhookEndpointTestOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<WebhookTest>("POST", $"/webhook_endpoints/{Uri.EscapeDataString(id)}/test", null, options, true, requestOptions, cancellationToken);
 
@@ -210,7 +220,7 @@ public sealed class BalanceService
     internal BalanceService(YeslyClient client) => _client = client;
 
     /// <summary>Retrieve the balance.</summary>
-    /// <remarks>Yesly is prepaid. Each WhatsApp message, SMS, email and started minute of a call that was picked up is taken from the balance at the public price; calls nobody picks up are free. A message that could not be sent is refunded with an `adjustment`. When a customer asks for another day on a call, the SMS with the link to pick a day is charged as an SMS. Top-ups are made by card in the dashboard and cannot be made through the API. <c>GET /balance</c></remarks>
+    /// <remarks>Yesly is prepaid. Each WhatsApp message, SMS, email and started minute of a call that was picked up is taken from the balance at the public price; calls nobody picks up are free. A message that could not be sent is refunded with an `adjustment`. When a customer asks for another day on a call, the link to pick a day goes by WhatsApp (or by SMS when WhatsApp cannot be used) and is charged as a message of that channel. Top-ups are made by card in the dashboard and cannot be made through the API. <c>GET /balance</c></remarks>
     public Task<Balance> RetrieveAsync(RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<Balance>("GET", "/balance", null, null, false, requestOptions, cancellationToken);
 

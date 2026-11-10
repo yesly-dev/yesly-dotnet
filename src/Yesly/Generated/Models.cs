@@ -27,7 +27,7 @@ public sealed class ListEnvelope
     public List<JsonElement>? Data { get; set; }
 }
 
-/// <summary>`start` and `end` of the appointment. For exact-time types, `end` is `start` plus the type's duration.</summary>
+/// <summary>`start` and `end` of the appointment. For exact-time types without an end, `end` is `start`.</summary>
 public sealed class AppointmentSlot
 {
     [JsonPropertyName("start")]
@@ -175,7 +175,7 @@ public sealed class Appointment
     [JsonPropertyName("location")]
     public string? Location { get; set; }
 
-    /// <summary>`start` and `end` of the appointment. For exact-time types, `end` is `start` plus the type's duration.</summary>
+    /// <summary>`start` and `end` of the appointment. For exact-time types without an end, `end` is `start`.</summary>
     [JsonPropertyName("slot")]
     public AppointmentSlot? Slot { get; set; }
 
@@ -211,7 +211,7 @@ public sealed class Appointment
     [JsonPropertyName("attempts")]
     public List<Attempt>? Attempts { get; set; }
 
-    /// <summary>What this appointment has cost so far, in euros. WhatsApp 0.08 per message, SMS 0.15 per message, email 0.01 per message, voice 0.30 per started minute of a call that was picked up; unanswered calls are free. An SMS with the link to pick a day after a call adds 0.15. Messages refused when sending are refunded. In test mode it shows the message prices, but nothing is charged.</summary>
+    /// <summary>What this appointment has cost so far, in euros. WhatsApp 0.08 per message, SMS 0.15 per message, email 0.01 per message, voice 0.30 per started minute of a call that was picked up; unanswered calls are free, and so are voicemails. The link to pick a day after a call adds a WhatsApp (0.08) or, when WhatsApp cannot be used, an SMS (0.15). Messages refused when sending are refunded. In test mode it shows the message prices, but nothing is charged.</summary>
     [JsonPropertyName("cost")]
     public double? Cost { get; set; }
 
@@ -283,13 +283,21 @@ public sealed class Attempt
     [JsonPropertyName("sent_at")]
     public string? SentAt { get; set; }
 
-    /// <summary>Cost of this attempt, in euros. `0` for a message refused when sending (refunded). On a call, includes the SMS with the link to pick a day, if one was sent.</summary>
+    /// <summary>Cost of this attempt, in euros. `0` for a message refused when sending (refunded). On a call, includes the WhatsApp or SMS with the link to pick a day, if one was sent; a call that reached a voicemail is free.</summary>
     [JsonPropertyName("cost")]
     public double? Cost { get; set; }
 
-    /// <summary>Calls only: what the call said and what it heard, in order. A customer turn has the recognised speech in `text` (empty for a silence) or the key pressed in `key`. Kept with the appointment and deleted with it.</summary>
+    /// <summary>Calls only, and only when you get one appointment (lists leave it out): what the call said and what it heard, in order. A customer turn has the recognised speech in `text` (empty for a silence) or the key pressed in `key`. Kept with the appointment and deleted with it.</summary>
     [JsonPropertyName("transcript")]
     public List<TranscriptLine>? Transcript { get; set; }
+
+    /// <summary>Calls only. `true` when the call's audio was recorded; get it with `GET /appointments/{id}/attempts/{attempt}/recording`.</summary>
+    [JsonPropertyName("has_recording")]
+    public bool? HasRecording { get; set; }
+
+    /// <summary>Calls only. `true` when Yesly's agent read the answer back (the date to confirm, the new slot or the cancellation) and the customer said yes again before it was recorded.</summary>
+    [JsonPropertyName("answer_verified")]
+    public bool? AnswerVerified { get; set; }
 }
 
 /// <summary>One turn of a call.</summary>
@@ -334,6 +342,27 @@ public sealed class AvailabilityBookResponse
     public AvailabilitySlot? Slot { get; set; }
 }
 
+/// <summary>A short-lived link to a call recording.</summary>
+public sealed class Recording
+{
+    [JsonPropertyName("object")]
+    public string? Object { get; set; }
+
+    /// <summary>Id of the call attempt.</summary>
+    [JsonPropertyName("attempt")]
+    public string? Attempt { get; set; }
+
+    [JsonPropertyName("content_type")]
+    public string? ContentType { get; set; }
+
+    /// <summary>Download or play link. Works until `expires_at`.</summary>
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    [JsonPropertyName("expires_at")]
+    public string? ExpiresAt { get; set; }
+}
+
 public sealed class AppointmentCreate
 {
     /// <summary>Your id for this appointment, such as the order or ticket number. Retrying with the same `external_id` is safe.</summary>
@@ -369,7 +398,7 @@ public sealed class AppointmentCreateSlot
     [JsonPropertyName("start")]
     public string? Start { get; set; }
 
-    /// <summary>End of the window, after `start`. Without it, `start` plus the type's `minutes` (60 if the account has no types).</summary>
+    /// <summary>End of the window, after `start`. Required unless the type is `exact` (then it may be left out, and `end` is `start`).</summary>
     [JsonPropertyName("end")]
     public string? End { get; set; }
 }
@@ -421,7 +450,7 @@ public sealed class AppointmentUpdateSlot
     [JsonPropertyName("start")]
     public string? Start { get; set; }
 
-    /// <summary>New end of the window. Without it, the new start plus the current length (or the new type's `minutes`, if you change the type).</summary>
+    /// <summary>New end of the window. Without it, a window keeps its current length; an exact time needs none.</summary>
     [JsonPropertyName("end")]
     public string? End { get; set; }
 }
@@ -457,6 +486,46 @@ public sealed class AppointmentList
 
     [JsonPropertyName("data")]
     public List<Appointment>? Data { get; set; }
+}
+
+/// <summary>How many appointments of each status match the filters.</summary>
+public sealed class AppointmentCounts
+{
+    [JsonPropertyName("object")]
+    public string? Object { get; set; }
+
+    /// <summary>One entry per status, `0` when there are none.</summary>
+    [JsonPropertyName("counts")]
+    public AppointmentCountsCounts? Counts { get; set; }
+
+    /// <summary>The sum of `counts`.</summary>
+    [JsonPropertyName("total")]
+    public long? Total { get; set; }
+}
+
+/// <summary>One entry per status, `0` when there are none.</summary>
+public sealed class AppointmentCountsCounts
+{
+    [JsonPropertyName("scheduled")]
+    public long? Scheduled { get; set; }
+
+    [JsonPropertyName("in_progress")]
+    public long? InProgress { get; set; }
+
+    [JsonPropertyName("confirmed")]
+    public long? Confirmed { get; set; }
+
+    [JsonPropertyName("rescheduled")]
+    public long? Rescheduled { get; set; }
+
+    [JsonPropertyName("reschedule_requested")]
+    public long? RescheduleRequested { get; set; }
+
+    [JsonPropertyName("cancelled")]
+    public long? Cancelled { get; set; }
+
+    [JsonPropertyName("no_reply")]
+    public long? NoReply { get; set; }
 }
 
 /// <summary>A bulk import of appointments, processed in the background.</summary>
@@ -619,10 +688,6 @@ public sealed class AppointmentType
     [JsonPropertyName("time_format")]
     public string? TimeFormat { get; set; }
 
-    /// <summary>Length of the window or duration of the appointment.</summary>
-    [JsonPropertyName("minutes")]
-    public long? Minutes { get; set; }
-
     /// <summary>`customer` (at the customer's address) or `location` (at one of your locations).</summary>
     [JsonPropertyName("place")]
     public string? Place { get; set; }
@@ -635,16 +700,32 @@ public sealed class AppointmentType
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
+    /// <summary>Where a customer may move the appointment to, counted from when they ask. Applies when `reschedulable` is true.</summary>
+    [JsonPropertyName("reschedule")]
+    public RescheduleWindow? Reschedule { get; set; }
+
     /// <summary>Whether the customer may cancel. Off for deliveries such as a parcel or a mattress; messages then do not offer it, and on a call a "no" is taken as a request for another day (if `reschedulable`).</summary>
     [JsonPropertyName("cancellable")]
     public bool? Cancellable { get; set; }
 
-    /// <summary>When the first message goes out for this type, or `null` to use your account's setting.</summary>
+    /// <summary>When the first message goes out for appointments of a type: `days_before` and `at` ("the day before at 10:00", `0` for the same day), or `hours_before` (same-day services: "3 hours before"). Moved into your contact hours when it falls outside them.</summary>
     [JsonPropertyName("first_contact")]
     public FirstContact? FirstContact { get; set; }
 
     [JsonPropertyName("created")]
     public string? Created { get; set; }
+}
+
+/// <summary>Where a customer may move the appointment to, counted from when they ask. Applies when `reschedulable` is true.</summary>
+public sealed class RescheduleWindow
+{
+    /// <summary>The new time is at least this many hours later.</summary>
+    [JsonPropertyName("min_notice_hours")]
+    public long? MinNoticeHours { get; set; }
+
+    /// <summary>The new time is at most this many days later.</summary>
+    [JsonPropertyName("window_days")]
+    public long? WindowDays { get; set; }
 }
 
 public sealed class AppointmentTypeCreate
@@ -661,10 +742,6 @@ public sealed class AppointmentTypeCreate
     [JsonPropertyName("time_format")]
     public string? TimeFormat { get; set; }
 
-    /// <summary>Window length or duration.</summary>
-    [JsonPropertyName("minutes")]
-    public long? Minutes { get; set; }
-
     /// <summary>`customer` (at the customer's address) or `location` (at one of your locations).</summary>
     [JsonPropertyName("place")]
     public string? Place { get; set; }
@@ -676,10 +753,14 @@ public sealed class AppointmentTypeCreate
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
+    /// <summary>Where the customer may move it to. Default: 24 hours to 14 days from when they ask.</summary>
+    [JsonPropertyName("reschedule")]
+    public RescheduleWindow? Reschedule { get; set; }
+
     [JsonPropertyName("cancellable")]
     public bool? Cancellable { get; set; }
 
-    /// <summary>Its own first message. Leave it out (or `null`) to use your account's setting.</summary>
+    /// <summary>When the first message goes out. Default: the day before at 10:00.</summary>
     [JsonPropertyName("first_contact")]
     public FirstContact? FirstContact { get; set; }
 }
@@ -690,10 +771,6 @@ public sealed class AppointmentTypeUpdate
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
-    /// <summary>New window length or duration.</summary>
-    [JsonPropertyName("minutes")]
-    public long? Minutes { get; set; }
-
     /// <summary>New instructions. An empty string clears them.</summary>
     [JsonPropertyName("instructions")]
     public string? Instructions { get; set; }
@@ -702,11 +779,15 @@ public sealed class AppointmentTypeUpdate
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
+    /// <summary>Where a customer may move the appointment to, counted from when they ask. Applies when `reschedulable` is true.</summary>
+    [JsonPropertyName("reschedule")]
+    public RescheduleWindow? Reschedule { get; set; }
+
     /// <summary>Whether the customer may cancel.</summary>
     [JsonPropertyName("cancellable")]
     public bool? Cancellable { get; set; }
 
-    /// <summary>Its own first message; `null` goes back to your account's setting.</summary>
+    /// <summary>When the first message goes out for appointments of a type: `days_before` and `at` ("the day before at 10:00", `0` for the same day), or `hours_before` (same-day services: "3 hours before"). Moved into your contact hours when it falls outside them.</summary>
     [JsonPropertyName("first_contact")]
     public FirstContact? FirstContact { get; set; }
 }
@@ -1350,7 +1431,7 @@ public sealed class BalanceTransaction
     [JsonPropertyName("object")]
     public string? Object { get; set; }
 
-    /// <summary>`usage` (a charge), `top_up` (a card top-up) or `adjustment` (money given back, such as a refund for a message refused when sending).</summary>
+    /// <summary>`usage` (a charge), `top_up` (a card top-up) or `adjustment` (money given back, such as a refund for a message refused when sending, or taken back, negative, when a card top-up is refunded or disputed).</summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
@@ -1434,6 +1515,10 @@ public sealed class AnalyticsSummary
     [JsonPropertyName("median_minutes_to_answer")]
     public long? MedianMinutesToAnswer { get; set; }
 
+    /// <summary>Calls answered by Yesly's conversational agent in the range.</summary>
+    [JsonPropertyName("agent_calls")]
+    public AnalyticsSummaryAgentCalls? AgentCalls { get; set; }
+
     /// <summary>Messages sent (not failed) and started call minutes.</summary>
     [JsonPropertyName("usage")]
     public AnalyticsSummaryUsage? Usage { get; set; }
@@ -1483,6 +1568,22 @@ public sealed class AnalyticsSummaryAnsweredBy
 
     [JsonPropertyName("email")]
     public long? Email { get; set; }
+}
+
+/// <summary>Calls answered by Yesly's conversational agent in the range.</summary>
+public sealed class AnalyticsSummaryAgentCalls
+{
+    /// <summary>Calls the agent took.</summary>
+    [JsonPropertyName("calls")]
+    public long? Calls { get; set; }
+
+    /// <summary>Of those, calls that ended with the customer's answer (confirmed, new day, another day asked or cancelled).</summary>
+    [JsonPropertyName("resolved")]
+    public long? Resolved { get; set; }
+
+    /// <summary>Of those, calls where the agent read the answer back and the customer said yes again (`answer_verified` on the attempt).</summary>
+    [JsonPropertyName("verified")]
+    public long? Verified { get; set; }
 }
 
 /// <summary>Messages sent (not failed) and started call minutes.</summary>
@@ -1613,7 +1714,7 @@ public sealed class AppointmentCreateOptionsSlot
     [JsonPropertyName("start")]
     public string? Start { get; set; }
 
-    /// <summary>End of the window, after `start`. Without it, `start` plus the type's `minutes` (60 if the account has no types).</summary>
+    /// <summary>End of the window, after `start`. Required unless the type is `exact` (then it may be left out, and `end` is `start`).</summary>
     [JsonPropertyName("end")]
     public string? End { get; set; }
 }
@@ -1631,6 +1732,38 @@ public sealed class AppointmentCreateOptionsCustomer
     /// <summary>Email for the `email` channel. Optional.</summary>
     [JsonPropertyName("email")]
     public string? Email { get; set; }
+}
+
+/// <summary>Parameters of `GET /appointments/counts`.</summary>
+public sealed class AppointmentCountOptions
+{
+    /// <summary>Only appointments whose slot starts on this day, `YYYY-MM-DD` in your account's time zone.</summary>
+    [JsonPropertyName("date")]
+    public string? Date { get; set; }
+
+    /// <summary>Slot starts on or after this day or time. A day starts at 00:00 in your account's time zone.</summary>
+    [JsonPropertyName("from")]
+    public string? From { get; set; }
+
+    /// <summary>Slot starts on or before this day or time. A day ends at 23:59:59 in your account's time zone.</summary>
+    [JsonPropertyName("to")]
+    public string? To { get; set; }
+
+    /// <summary>Only this appointment type.</summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    /// <summary>Only this location.</summary>
+    [JsonPropertyName("location")]
+    public string? Location { get; set; }
+
+    /// <summary>The appointment with this `external_id`.</summary>
+    [JsonPropertyName("external_id")]
+    public string? ExternalId { get; set; }
+
+    /// <summary>Only appointments whose metadata has this value, such as `metadata[route_id]=BIO-07`.</summary>
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, string>? Metadata { get; set; }
 }
 
 /// <summary>Parameters of `PATCH /appointments/{id}`.</summary>
@@ -1665,7 +1798,7 @@ public sealed class AppointmentUpdateOptionsSlot
     [JsonPropertyName("start")]
     public string? Start { get; set; }
 
-    /// <summary>New end of the window. Without it, the new start plus the current length (or the new type's `minutes`, if you change the type).</summary>
+    /// <summary>New end of the window. Without it, a window keeps its current length; an exact time needs none.</summary>
     [JsonPropertyName("end")]
     public string? End { get; set; }
 }
@@ -1756,10 +1889,6 @@ public sealed class AppointmentTypeCreateOptions
     [JsonPropertyName("time_format")]
     public string? TimeFormat { get; set; }
 
-    /// <summary>Window length or duration.</summary>
-    [JsonPropertyName("minutes")]
-    public long? Minutes { get; set; }
-
     /// <summary>`customer` (at the customer's address) or `location` (at one of your locations).</summary>
     [JsonPropertyName("place")]
     public string? Place { get; set; }
@@ -1771,10 +1900,14 @@ public sealed class AppointmentTypeCreateOptions
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
+    /// <summary>Where the customer may move it to. Default: 24 hours to 14 days from when they ask.</summary>
+    [JsonPropertyName("reschedule")]
+    public RescheduleWindow? Reschedule { get; set; }
+
     [JsonPropertyName("cancellable")]
     public bool? Cancellable { get; set; }
 
-    /// <summary>Its own first message. Leave it out (or `null`) to use your account's setting.</summary>
+    /// <summary>When the first message goes out. Default: the day before at 10:00.</summary>
     [JsonPropertyName("first_contact")]
     public FirstContact? FirstContact { get; set; }
 }
@@ -1786,10 +1919,6 @@ public sealed class AppointmentTypeUpdateOptions
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
-    /// <summary>New window length or duration.</summary>
-    [JsonPropertyName("minutes")]
-    public long? Minutes { get; set; }
-
     /// <summary>New instructions. An empty string clears them.</summary>
     [JsonPropertyName("instructions")]
     public string? Instructions { get; set; }
@@ -1798,11 +1927,15 @@ public sealed class AppointmentTypeUpdateOptions
     [JsonPropertyName("reschedulable")]
     public bool? Reschedulable { get; set; }
 
+    /// <summary>Where a customer may move the appointment to, counted from when they ask. Applies when `reschedulable` is true.</summary>
+    [JsonPropertyName("reschedule")]
+    public RescheduleWindow? Reschedule { get; set; }
+
     /// <summary>Whether the customer may cancel.</summary>
     [JsonPropertyName("cancellable")]
     public bool? Cancellable { get; set; }
 
-    /// <summary>Its own first message; `null` goes back to your account's setting.</summary>
+    /// <summary>When the first message goes out for appointments of a type: `days_before` and `at` ("the day before at 10:00", `0` for the same day), or `hours_before` (same-day services: "3 hours before"). Moved into your contact hours when it falls outside them.</summary>
     [JsonPropertyName("first_contact")]
     public FirstContact? FirstContact { get; set; }
 }
