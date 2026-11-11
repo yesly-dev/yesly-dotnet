@@ -5,52 +5,64 @@ namespace Yesly.Tests;
 
 public class ClientTests
 {
-    private const string Apt = """{"id":"apt_1","object":"appointment","external_id":"ORD-48213","status":"scheduled","cost":0.0,"unknown_field":1}""";
+    private const string Cnv = """{"id":"cnv_7Qp4Ns2Xk9Lm3D","object":"conversation","status":"scheduled","cost":0.0,"context":{"order":"8841"},"unknown_field":1}""";
 
     private static YeslyClient Client(FakeHandler h)
         => new(new YeslyClientOptions { ApiKey = "ysk_test_123", BaseUrl = "https://api.test/v1", HttpClient = new HttpClient(h) }) { Delay = (_, _) => Task.CompletedTask };
 
     [Fact]
-    public async Task CreatesAnAppointmentAsOnTheWebsite()
+    public async Task CreatesAConversationAsInTheReadme()
     {
-        var h = new FakeHandler().Answer(201, Apt);
+        var h = new FakeHandler().Answer(201, Cnv);
         var yesly = Client(h);
 
-        var apt = await yesly.Appointments.CreateAsync(new AppointmentCreateOptions
+        var cnv = await yesly.Conversations.CreateAsync(new ConversationCreateOptions
         {
-            ExternalId = "ORD-48213",
-            Type = "delivery",
-            Customer = new() { Name = "Martha", Phone = "+34612345678" },
-            Slot = new() { Start = "2026-11-13T09:00:00+01:00", End = "2026-11-13T11:00:00+01:00" },
-            Metadata = new() { ["order_id"] = "PV-18342", ["route_id"] = "BIO-07" },
+            Agent = "agt_8Hd2kQ4mZ1LpXy",
+            Contact = YeslyJson.Of(new ContactInput { ExternalId = "customer-3391", Phone = "+34600000001", Name = "Marta" }),
+            Channels = new() { "whatsapp", "call" },
+            StartAt = "2026-12-01T10:00:00+01:00",
+            Context = new() { ["order"] = YeslyJson.Of("8841"), ["delivery_window"] = YeslyJson.Of("2026-12-02T09:00/13:00") },
         });
 
-        Assert.Equal("apt_1", apt.Id);
-        Assert.Equal("scheduled", apt.Status);
+        Assert.Equal("cnv_7Qp4Ns2Xk9Lm3D", cnv.Id);
+        Assert.Equal("scheduled", cnv.Status);
+        Assert.Equal("8841", cnv.Context!["order"].GetString());
         var c = h.Calls[0];
         Assert.Equal("POST", c.Method);
-        Assert.Equal("https://api.test/v1/appointments", c.Url);
+        Assert.Equal("https://api.test/v1/conversations", c.Url);
         Assert.Equal("Bearer ysk_test_123", c.Headers["Authorization"]);
         Assert.Equal(ApiVersion.Current, c.Headers["Yesly-Version"]);
         Assert.StartsWith($"yesly-dotnet/{YeslyVersion.Current} ", c.Headers["User-Agent"]);
-        Assert.False(c.Headers.ContainsKey("Idempotency-Key"));
+        Assert.Matches("^[0-9a-f-]{36}$", c.Headers["Idempotency-Key"]);
         using var body = JsonDocument.Parse(c.Body!);
-        Assert.Equal("Martha", body.RootElement.GetProperty("customer").GetProperty("name").GetString());
-        Assert.Equal("BIO-07", body.RootElement.GetProperty("metadata").GetProperty("route_id").GetString());
-        Assert.False(body.RootElement.TryGetProperty("location", out _));
+        var contact = body.RootElement.GetProperty("contact");
+        Assert.Equal("Marta", contact.GetProperty("name").GetString());
+        Assert.False(contact.TryGetProperty("email", out _));
+        Assert.Equal("2026-12-02T09:00/13:00", body.RootElement.GetProperty("context").GetProperty("delivery_window").GetString());
+        Assert.Equal("call", body.RootElement.GetProperty("channels")[1].GetString());
+    }
+
+    [Fact]
+    public async Task TakesAContactId()
+    {
+        var h = new FakeHandler().Answer(201, Cnv);
+        await Client(h).Conversations.CreateAsync(new ConversationCreateOptions { Agent = "agt_8Hd2kQ4mZ1LpXy", Contact = YeslyJson.Of("ctc_3Kf9Lq2Wm7Rt4B"), Channels = new() { "call" } });
+        Assert.Equal("""{"agent":"agt_8Hd2kQ4mZ1LpXy","contact":"ctc_3Kf9Lq2Wm7Rt4B","channels":["call"]}""", h.Calls[0].Body);
     }
 
     [Fact]
     public async Task EncodesIdsAndQuery()
     {
-        var h = new FakeHandler().Answer(200, Apt).Answer(200, """{"object":"list","url":"/v1/appointments","has_more":false,"data":[]}""").Answer(200, """{"object":"list","data":[]}""");
+        var h = new FakeHandler().Answer(200, Cnv).Answer(200, """{"object":"list","url":"/v1/conversations","has_more":false,"data":[]}""").Answer(200, """{"id":"mem_1","deleted":true}""");
         var y = Client(h);
-        await y.Appointments.RetrieveAsync("apt/1");
-        await y.Appointments.ListAsync(new AppointmentListOptions { Status = "no_reply", Metadata = new() { ["route_id"] = "BIO-07" }, Limit = 5 });
-        await y.Slots.ListAsync(new SlotListOptions { Available = true });
-        Assert.Equal("https://api.test/v1/appointments/apt%2F1", h.Calls[0].Url);
-        Assert.Equal("https://api.test/v1/appointments?status=no_reply&metadata%5Broute_id%5D=BIO-07&limit=5", h.Calls[1].Url);
-        Assert.Equal("https://api.test/v1/slots?available=true", h.Calls[2].Url);
+        await y.Conversations.RetrieveAsync("cnv/1");
+        await y.Conversations.ListAsync(new ConversationListOptions { Status = "no_reply", Agent = "agt_8Hd2kQ4mZ1LpXy", Limit = 5 });
+        await y.Contacts.DeleteMemoryAsync("ctc_3Kf9Lq2Wm7Rt4B", "mem/1");
+        Assert.Equal("https://api.test/v1/conversations/cnv%2F1", h.Calls[0].Url);
+        Assert.Equal("https://api.test/v1/conversations?agent=agt_8Hd2kQ4mZ1LpXy&status=no_reply&limit=5", h.Calls[1].Url);
+        Assert.Equal("DELETE", h.Calls[2].Method);
+        Assert.Equal("https://api.test/v1/contacts/ctc_3Kf9Lq2Wm7Rt4B/memory/mem%2F1", h.Calls[2].Url);
     }
 
     [Fact]
@@ -59,8 +71,8 @@ public class ClientTests
         var h = new FakeHandler()
             .Answer(500, """{"error":{"type":"api_error","message":"boom"}}""")
             .Answer(503, "{}", new() { ["Retry-After"] = "0" })
-            .Answer(200, """{"object":"list","data":[]}""");
-        await Client(h).Slots.CreateAsync(new SlotCreateOptions { Slots = new() { new SlotCreate { Start = "2026-11-13T09:00:00+01:00", End = "2026-11-13T11:00:00+01:00", Type = "delivery" } } });
+            .Answer(200, """{"id":"ctc_1","object":"contact"}""");
+        await Client(h).Contacts.CreateAsync(new ContactCreateOptions { ExternalId = "customer-3391", Phone = "+34600000001" });
         Assert.Equal(3, h.Calls.Count);
         var keys = h.Calls.Select(c => c.Headers["Idempotency-Key"]).Distinct().ToList();
         Assert.Single(keys);
@@ -70,13 +82,11 @@ public class ClientTests
     [Fact]
     public async Task UsesTheGivenIdempotencyKeyAndSendsAnEmptyObject()
     {
-        var h = new FakeHandler().Answer(200, Apt).Answer(200, Apt);
-        var y = Client(h);
-        await y.Appointments.CancelAsync("apt_1", new AppointmentCancelOptions { Reason = "Shop closed" }, new RequestOptions { IdempotencyKey = "cancel-apt_1" });
-        await y.Appointments.CancelAsync("apt_2");
-        Assert.Equal("cancel-apt_1", h.Calls[0].Headers["Idempotency-Key"]);
-        Assert.Equal("""{"reason":"Shop closed"}""", h.Calls[0].Body);
-        Assert.Equal("{}", h.Calls[1].Body);
+        var h = new FakeHandler().Answer(200, Cnv);
+        await Client(h).Conversations.CancelAsync("cnv_7Qp4Ns2Xk9Lm3D", new RequestOptions { IdempotencyKey = "cancel-order-8841" });
+        Assert.Equal("https://api.test/v1/conversations/cnv_7Qp4Ns2Xk9Lm3D/cancel", h.Calls[0].Url);
+        Assert.Equal("cancel-order-8841", h.Calls[0].Headers["Idempotency-Key"]);
+        Assert.Equal("{}", h.Calls[0].Body);
     }
 
     [Fact]
@@ -90,9 +100,9 @@ public class ClientTests
     [Fact]
     public async Task MapsErrorsAndDoesNotRetry4xx()
     {
-        var h = new FakeHandler().Answer(422, """{"error":{"type":"invalid_request","code":"phone_invalid","param":"customer.phone","message":"Not E.164","request_id":"req_1"}}""");
-        var e = await Assert.ThrowsAsync<InvalidRequestException>(() => Client(h).Appointments.RetrieveAsync("apt_1"));
-        Assert.Equal((422, "phone_invalid", "customer.phone", "req_1", "Not E.164"), (e.Status, e.Code, e.Param, e.RequestId, e.Message));
+        var h = new FakeHandler().Answer(422, """{"error":{"type":"invalid_request","code":"context_invalid","param":"context.order","message":"Missing","request_id":"req_1"}}""");
+        var e = await Assert.ThrowsAsync<InvalidRequestException>(() => Client(h).Conversations.CreateAsync(new ConversationCreateOptions { Agent = "agt_1", Contact = YeslyJson.Of("ctc_1"), Channels = new() { "call" } }));
+        Assert.Equal((422, "context_invalid", "context.order", "req_1", "Missing"), (e.Status, e.Code, e.Param, e.RequestId, e.Message));
         Assert.Single(h.Calls);
     }
 
@@ -110,7 +120,7 @@ public class ClientTests
     public async Task AutoPagingWalksEveryPage()
     {
         var h = new FakeHandler()
-            .Answer(200, """{"object":"list","url":"/v1/events","has_more":true,"data":[{"id":"evt_3","type":"appointment.created","data":{"appointment":{"id":"apt_1"}}},{"id":"evt_2"}]}""")
+            .Answer(200, """{"object":"list","url":"/v1/events","has_more":true,"data":[{"id":"evt_3","type":"conversation.created","data":{"conversation":{"id":"cnv_1"}}},{"id":"evt_2"}]}""")
             .Answer(200, """{"object":"list","url":"/v1/events","has_more":false,"data":[{"id":"evt_1"}]}""");
         var y = Client(h);
         var ids = new List<string>();
@@ -123,13 +133,23 @@ public class ClientTests
     public async Task FirstPageAndNextPage()
     {
         var h = new FakeHandler()
-            .Answer(200, """{"object":"list","url":"/v1/events","has_more":true,"data":[{"id":"evt_2","type":"appointment.created","data":{"appointment":{"id":"apt_1"}}}]}""")
+            .Answer(200, """{"object":"list","url":"/v1/events","has_more":true,"data":[{"id":"evt_2","type":"conversation.ended","data":{"conversation":{"id":"cnv_1","outcome":{"code":"confirmed","data":{}}}}}]}""")
             .Answer(200, """{"object":"list","url":"/v1/events","has_more":false,"data":[{"id":"evt_1"}]}""");
         var page = await Client(h).Events.ListAsync();
-        Assert.Equal("apt_1", page.Data[0].Data!.Appointment!.Id);
+        Assert.Equal("confirmed", page.Data[0].Data!.Conversation!.Outcome!.Code);
         Assert.True(page.HasNextPage);
         var next = await page.NextPageAsync();
         Assert.False(next.HasNextPage);
+    }
+
+    [Fact]
+    public async Task ReadsTurnsWithoutIdsInOnePage()
+    {
+        var h = new FakeHandler().Answer(200, """{"object":"list","url":"/v1/conversations/cnv_1/messages","has_more":false,"data":[{"object":"turn","role":"agent","channel":"whatsapp","message":"msg_1","text":"Hola Marta","at":"2026-12-01T10:00:01+01:00"},{"object":"turn","role":"contact","channel":"whatsapp","message":"msg_2","text":"Vale","at":"2026-12-01T10:03:41+01:00"}]}""");
+        var texts = new List<string>();
+        await foreach (var t in Client(h).Conversations.ListMessagesAutoPagingAsync("cnv_1")) texts.Add(t.Text!);
+        Assert.Equal(new[] { "Hola Marta", "Vale" }, texts);
+        Assert.Single(h.Calls);
     }
 
     [Fact]

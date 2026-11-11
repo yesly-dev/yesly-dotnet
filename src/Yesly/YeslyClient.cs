@@ -13,7 +13,7 @@ namespace Yesly;
 
 /// <summary>
 /// Client for the Yesly API. The key defaults to the <c>YESLY_API_KEY</c> environment variable.
-/// The resources (<see cref="Appointments"/>, <see cref="Slots"/>, …) are generated from the OpenAPI specification.
+/// The resources (<see cref="Conversations"/>, <see cref="Contacts"/>, …) are generated from the OpenAPI specification.
 /// </summary>
 public sealed partial class YeslyClient
 {

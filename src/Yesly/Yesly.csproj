@@ -11,10 +11,10 @@
     <IsAotCompatible>true</IsAotCompatible>
 
     <PackageId>Yesly</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Yesly</Authors>
     <Description>Official .NET library for the Yesly API</Description>
-    <PackageTags>yesly;appointments;whatsapp;sms;api</PackageTags>
+    <PackageTags>yesly;agents;conversations;whatsapp;sms;api</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://yesly.dev</PackageProjectUrl>
     <RepositoryUrl>https://github.com/yesly-dev/yesly-dotnet</RepositoryUrl>

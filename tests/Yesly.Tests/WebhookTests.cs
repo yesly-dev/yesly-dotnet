@@ -6,21 +6,23 @@ public class WebhookTests
 {
     private const string Secret = "whsec_test";
     private const long Now = 1794474252;
-    private const string Body = """{"id":"evt_1","object":"event","type":"appointment.confirmed","data":{"appointment":{"id":"apt_1","external_id":"ORD-48213"}}}""";
+    private const string Body = """{"id":"evt_1","object":"event","type":"conversation.ended","data":{"conversation":{"id":"cnv_7Qp4Ns2Xk9Lm3D","outcome":{"code":"rescheduled","data":{"delivery_window":"2026-12-03T09:00/13:00"}}}}}""";
 
     [Fact]
     public void MatchesAnHmacComputedElsewhere()
     {
         // HMAC-SHA256 of "1794474252." + Body with "whsec_test", computed with Python's hmac module.
-        Assert.Equal("t=1794474252,v1=62b8ce65d20d98e1d1d8f14ff76317b0bf9b166a3dc5c2d980022e54c62e0a67", Webhook.GenerateTestHeader(Body, Secret, Now));
+        Assert.Equal("t=1794474252,v1=f60bd9a59d63d6f2d01cbdcd9aec4781af68e4d1e915aaff424817ce69921f83", Webhook.GenerateTestHeader(Body, Secret, Now));
     }
 
     [Fact]
     public void ValidSignature()
     {
         var e = Webhook.ConstructEvent(Body, Webhook.GenerateTestHeader(Body, Secret, Now), Secret, now: Now);
-        Assert.Equal("appointment.confirmed", e.Type);
-        Assert.Equal("ORD-48213", e.Data!.Appointment!.ExternalId);
+        Assert.Equal("conversation.ended", e.Type);
+        var outcome = e.Data!.Conversation!.Outcome!;
+        Assert.Equal("rescheduled", outcome.Code);
+        Assert.Equal("2026-12-03T09:00/13:00", outcome.Data!["delivery_window"].GetString());
     }
 
     [Fact]
