@@ -31,7 +31,7 @@ public sealed class AgentsService
         => _client.RequestAsync<Agent>("GET", $"/agents/{Uri.EscapeDataString(id)}", null, null, false, requestOptions, cancellationToken);
 
     /// <summary>Update an agent's settings.</summary>
-    /// <remarks>Changes the settings you own: voice, limits, contact hours, recording, the disclosure sentence and the transfer targets. The agent's code, models, outcomes and context are Yesly's: ask for a new version. Accounts with EU data residency cannot choose a voice that is processed outside the EU (`voice_not_in_eu`). <c>PATCH /agents/{id}</c></remarks>
+    /// <remarks>Changes the settings you own: voice, email profile, limits, contact hours, recording, the disclosure sentence and the transfer targets. The agent's code, models, outcomes and context are Yesly's: ask for a new version. Accounts with EU data residency cannot choose a voice that is processed outside the EU (`voice_not_in_eu`). <c>PATCH /agents/{id}</c></remarks>
     public Task<Agent> UpdateAsync(string id, AgentUpdateOptions options, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<Agent>("PATCH", $"/agents/{Uri.EscapeDataString(id)}", null, options, false, requestOptions, cancellationToken);
 
@@ -124,7 +124,7 @@ public sealed class ConversationsService
     internal ConversationsService(YeslyClient client) => _client = client;
 
     /// <summary>List conversations.</summary>
-    /// <remarks>Newest first, by creation. <c>GET /conversations</c></remarks>
+    /// <remarks>Newest first by creation, or oldest first with `order=asc`. <c>GET /conversations</c></remarks>
     public Task<Page<Conversation>> ListAsync(ConversationListOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.ListAsync<Conversation>("GET", "/conversations", options, requestOptions, cancellationToken);
 
@@ -165,6 +165,56 @@ public sealed class ConversationsService
     /// <remarks>A link, valid 15 minutes, to a call's audio (WAV). Without `message`, the conversation's last recorded call. Needs a key with full access (`403` `api_key_scope` otherwise); `404` when there is no recording, or it expired. Every link is in your account's access log. <c>GET /conversations/{id}/recording</c></remarks>
     public Task<Recording> RecordingAsync(string id, ConversationRecordingOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<Recording>("GET", $"/conversations/{Uri.EscapeDataString(id)}/recording", options, null, false, requestOptions, cancellationToken);
+}
+
+public sealed class CampaignsService
+{
+    private readonly YeslyClient _client;
+
+    internal CampaignsService(YeslyClient client) => _client = client;
+
+    /// <summary>List campaigns.</summary>
+    /// <remarks>Newest first by creation. <c>GET /campaigns</c></remarks>
+    public Task<Page<Campaign>> ListAsync(CampaignListOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.ListAsync<Campaign>("GET", "/campaigns", options, requestOptions, cancellationToken);
+
+    /// <summary>Every item of <see cref="ListAsync"/>, fetching pages as needed.</summary>
+    public IAsyncEnumerable<Campaign> ListAutoPagingAsync(CampaignListOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.ListAutoPagingAsync<Campaign>("GET", "/campaigns", options, requestOptions, cancellationToken);
+
+    /// <summary>Create a campaign.</summary>
+    /// <remarks>Asks an agent to contact many people. Every recipient is checked before anything is stored; the first problem is the error, and `param` points at the row (`recipients[12].phone`, `recipients[3].email`, `recipients[7]`, `recipients[0].context`, `recipients[5].contact`). Once a minute, for each running campaign, Yesly starts the next `rate` conversations as ordinary outbound conversations, only inside the agent's contact hours in live mode (test mode ignores hours). The campaign is `scheduled` until `start_at`. A recipient is either an existing contact (`contact`) or the person's details, which find or create the contact when its conversation starts. Live phone numbers must be Spanish mobiles or landlines. Send an `Idempotency-Key`: a retry then never creates two campaigns. <c>POST /campaigns</c></remarks>
+    public Task<Campaign> CreateAsync(CampaignCreateOptions options, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.RequestAsync<Campaign>("POST", "/campaigns", null, options, true, requestOptions, cancellationToken);
+
+    /// <summary>Retrieve a campaign.</summary>
+    /// <remarks>&lt;c&gt;GET /campaigns/{id}&lt;/c&gt;</remarks>
+    public Task<Campaign> RetrieveAsync(string id, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.RequestAsync<Campaign>("GET", $"/campaigns/{Uri.EscapeDataString(id)}", null, null, false, requestOptions, cancellationToken);
+
+    /// <summary>Pause a campaign.</summary>
+    /// <remarks>Stops starting new conversations; the ones already started go on. Only a `scheduled`, `running` or `waiting` campaign: anything else gets `409` `campaign_not_pausable`. Keys that can write, and members, admins and owners in the dashboard. <c>POST /campaigns/{id}/pause</c></remarks>
+    public Task<Campaign> PauseAsync(string id, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.RequestAsync<Campaign>("POST", $"/campaigns/{Uri.EscapeDataString(id)}/pause", null, null, true, requestOptions, cancellationToken);
+
+    /// <summary>Resume a campaign.</summary>
+    /// <remarks>Starts conversations again where the campaign left off. Only a `paused` campaign: anything else gets `409` `campaign_not_paused`. <c>POST /campaigns/{id}/resume</c></remarks>
+    public Task<Campaign> ResumeAsync(string id, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.RequestAsync<Campaign>("POST", $"/campaigns/{Uri.EscapeDataString(id)}/resume", null, null, true, requestOptions, cancellationToken);
+
+    /// <summary>Cancel a campaign.</summary>
+    /// <remarks>Recipients not started become `skipped`; conversations already started go on. Anything but a `cancelled` or `completed` campaign can be cancelled; those get `409` `campaign_not_cancellable`. <c>POST /campaigns/{id}/cancel</c></remarks>
+    public Task<Campaign> CancelAsync(string id, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.RequestAsync<Campaign>("POST", $"/campaigns/{Uri.EscapeDataString(id)}/cancel", null, null, true, requestOptions, cancellationToken);
+
+    /// <summary>List a campaign's recipients.</summary>
+    /// <remarks>The rows in the order they were sent, row 1 first, with the conversation each one started. A row that started shows the contact's current details (`null` once the contact is erased). Unlike other lists, `starting_after` is a row number: pass the `row` of the last item received. <c>GET /campaigns/{id}/recipients</c></remarks>
+    public Task<Page<CampaignRecipient>> ListRecipientsAsync(string id, CampaignListRecipientsOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.ListAsync<CampaignRecipient>("GET", $"/campaigns/{Uri.EscapeDataString(id)}/recipients", options, requestOptions, cancellationToken);
+
+    /// <summary>Every item of <see cref="ListRecipientsAsync"/>, fetching pages as needed.</summary>
+    public IAsyncEnumerable<CampaignRecipient> ListRecipientsAutoPagingAsync(string id, CampaignListRecipientsOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
+        => _client.ListAutoPagingAsync<CampaignRecipient>("GET", $"/campaigns/{Uri.EscapeDataString(id)}/recipients", options, requestOptions, cancellationToken);
 }
 
 public sealed class MessagesService
@@ -264,12 +314,12 @@ public sealed class BalanceService
     internal BalanceService(YeslyClient client) => _client = client;
 
     /// <summary>Retrieve the balance.</summary>
-    /// <remarks>Yesly is prepaid. Each SMS, WhatsApp message and email, and each started minute of a call that was picked up, is taken from the balance at your account's prices; calls nobody picks up are free. A message that could not be sent is refunded with an `adjustment`. A live call holds its longest cost (the agent's `max_call_minutes`) until it ends. Top-ups are made by card in the dashboard and cannot be made through the API. <c>GET /balance</c></remarks>
+    /// <remarks>Yesly is prepaid. The balance belongs to your organization: every account in it spends from the same one, and this endpoint returns it whichever account's key you use. Each SMS, WhatsApp message and email, and each started minute of a call that was picked up, is taken from it at your account's prices; calls nobody picks up are free. A message that could not be sent is refunded with an `adjustment`. A live call holds its longest cost (the agent's `max_call_minutes`) until it ends. Top-ups are made by card in the dashboard and cannot be made through the API. <c>GET /balance</c></remarks>
     public Task<Balance> RetrieveAsync(RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.RequestAsync<Balance>("GET", "/balance", null, null, false, requestOptions, cancellationToken);
 
     /// <summary>List balance transactions.</summary>
-    /// <remarks>Every charge, top-up and adjustment, newest first. Charges point to the agent, the conversation and the message, so you can pass the cost on to an order or a customer. <c>GET /balance/transactions</c></remarks>
+    /// <remarks>Every charge and adjustment of your account, newest first. Charges point to the agent, the conversation and the message, so you can pass the cost on to an order or a customer. Top-ups belong to the organization and are listed in the dashboard, with every account's charges. <c>GET /balance/transactions</c></remarks>
     public Task<Page<BalanceTransaction>> ListTransactionsAsync(BalanceListTransactionsOptions? options = null, RequestOptions? requestOptions = null, CancellationToken cancellationToken = default)
         => _client.ListAsync<BalanceTransaction>("GET", "/balance/transactions", options, requestOptions, cancellationToken);
 

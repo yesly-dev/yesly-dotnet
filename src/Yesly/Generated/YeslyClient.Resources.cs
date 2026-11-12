@@ -11,6 +11,7 @@ public sealed partial class YeslyClient
     public SendersService Senders { get; private set; } = null!;
     public ContactsService Contacts { get; private set; } = null!;
     public ConversationsService Conversations { get; private set; } = null!;
+    public CampaignsService Campaigns { get; private set; } = null!;
     public MessagesService Messages { get; private set; } = null!;
     public TemplatesService Templates { get; private set; } = null!;
     public OptOutsService OptOuts { get; private set; } = null!;
@@ -25,6 +26,7 @@ public sealed partial class YeslyClient
         Senders = new SendersService(this);
         Contacts = new ContactsService(this);
         Conversations = new ConversationsService(this);
+        Campaigns = new CampaignsService(this);
         Messages = new MessagesService(this);
         Templates = new TemplatesService(this);
         OptOuts = new OptOutsService(this);

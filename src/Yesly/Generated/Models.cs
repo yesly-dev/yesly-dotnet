@@ -133,6 +133,10 @@ public sealed class Agent
     [JsonPropertyName("voice")]
     public string? Voice { get; set; }
 
+    /// <summary>The email profile its emails go out through: one of the company's own SMTP servers, set up in the dashboard (Settings → Email). `null`: Yesly's sender, with the company's name.</summary>
+    [JsonPropertyName("email_profile")]
+    public string? EmailProfile { get; set; }
+
     /// <summary>The models it runs on, as `provider:model`. Set by Yesly.</summary>
     [JsonPropertyName("models")]
     public AgentModels? Models { get; set; }
@@ -205,6 +209,10 @@ public sealed class AgentUpdate
     /// <summary>A voice of the catalog, or `null` for the agent's default.</summary>
     [JsonPropertyName("voice")]
     public string? Voice { get; set; }
+
+    /// <summary>One of the company's email profiles, or `null` for Yesly's sender.</summary>
+    [JsonPropertyName("email_profile")]
+    public string? EmailProfile { get; set; }
 
     /// <summary>Only the limits sent change.</summary>
     [JsonPropertyName("limits")]
@@ -577,6 +585,10 @@ public sealed class Conversation
     [JsonPropertyName("recording")]
     public string? Recording { get; set; }
 
+    /// <summary>Id of the campaign that started it, prefixed `cmp_`. `null` when it did not come from a campaign.</summary>
+    [JsonPropertyName("campaign")]
+    public string? Campaign { get; set; }
+
     [JsonPropertyName("created")]
     public string? Created { get; set; }
 }
@@ -645,6 +657,284 @@ public sealed class ConversationList
 
     [JsonPropertyName("data")]
     public List<Conversation>? Data { get; set; }
+}
+
+/// <summary>One agent contacting many people at a steady pace. Each recipient is started as an ordinary outbound conversation.</summary>
+public sealed class Campaign
+{
+    /// <summary>Unique id, prefixed `cmp_`.</summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("object")]
+    public string? Object { get; set; }
+
+    /// <summary>`live` or `test`, from the API key.</summary>
+    [JsonPropertyName("mode")]
+    public string? Mode { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    /// <summary>Id of the agent.</summary>
+    [JsonPropertyName("agent")]
+    public string? Agent { get; set; }
+
+    /// <summary>The order the channels are tried in, for every conversation.</summary>
+    [JsonPropertyName("channels")]
+    public List<string>? Channels { get; set; }
+
+    /// <summary>Not before this time.</summary>
+    [JsonPropertyName("start_at")]
+    public string? StartAt { get; set; }
+
+    /// <summary>Conversations started per minute.</summary>
+    [JsonPropertyName("rate")]
+    public long? Rate { get; set; }
+
+    /// <summary>- `scheduled`: `start_at` is in the future. - `running`: starting conversations, or waiting for the ones started to finish. - `waiting`: recipients are left but it is outside the agent's contact hours (live mode). - `paused`: you paused it; nothing new starts. Conversations already started go on. - `cancelled`: you cancelled it; recipients not started are `skipped`. Conversations already started go on. - `completed`: every recipient was started or failed, and every conversation finished.</summary>
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    /// <summary>How many rows are in each state.</summary>
+    [JsonPropertyName("recipients")]
+    public CampaignRecipients? Recipients { get; set; }
+
+    /// <summary>The conversations the campaign started, counted by status, with what they achieved so far.</summary>
+    [JsonPropertyName("conversations")]
+    public CampaignConversations? Conversations { get; set; }
+
+    [JsonPropertyName("created")]
+    public string? Created { get; set; }
+
+    /// <summary>When the campaign was cancelled or completed. `null` until then.</summary>
+    [JsonPropertyName("ended_at")]
+    public string? EndedAt { get; set; }
+}
+
+/// <summary>How many rows are in each state.</summary>
+public sealed class CampaignRecipients
+{
+    [JsonPropertyName("total")]
+    public long? Total { get; set; }
+
+    /// <summary>Not started yet.</summary>
+    [JsonPropertyName("pending")]
+    public long? Pending { get; set; }
+
+    /// <summary>Started: a conversation exists.</summary>
+    [JsonPropertyName("launched")]
+    public long? Launched { get; set; }
+
+    /// <summary>Could not start, for example because the contact was erased or the number is not allowed. Each row has an `error`.</summary>
+    [JsonPropertyName("failed")]
+    public long? Failed { get; set; }
+
+    /// <summary>Not started because the campaign was cancelled.</summary>
+    [JsonPropertyName("skipped")]
+    public long? Skipped { get; set; }
+}
+
+/// <summary>The conversations the campaign started, counted by status, with what they achieved so far.</summary>
+public sealed class CampaignConversations
+{
+    [JsonPropertyName("scheduled")]
+    public long? Scheduled { get; set; }
+
+    [JsonPropertyName("in_progress")]
+    public long? InProgress { get; set; }
+
+    [JsonPropertyName("ended")]
+    public long? Ended { get; set; }
+
+    [JsonPropertyName("no_reply")]
+    public long? NoReply { get; set; }
+
+    [JsonPropertyName("cancelled")]
+    public long? Cancelled { get; set; }
+
+    [JsonPropertyName("failed")]
+    public long? Failed { get; set; }
+
+    /// <summary>How many contacts answered or wrote back.</summary>
+    [JsonPropertyName("engaged")]
+    public long? Engaged { get; set; }
+
+    /// <summary>Conversations per outcome code of the agent. Codes nobody reached are missing.</summary>
+    [JsonPropertyName("outcomes")]
+    public Dictionary<string, long>? Outcomes { get; set; }
+
+    /// <summary>What the conversations cost so far, in euro cents. `0` in test mode.</summary>
+    [JsonPropertyName("cost_cents")]
+    public long? CostCents { get; set; }
+}
+
+/// <summary>One person to contact: an existing contact (`contact`), or the person's details with at least a phone, an email or an `external_id`.</summary>
+public sealed class CampaignRecipientInput
+{
+    /// <summary>Id of an existing contact, prefixed `ctc_`. Do not combine with the person's details.</summary>
+    [JsonPropertyName("contact")]
+    public string? Contact { get; set; }
+
+    /// <summary>Your own id for the customer.</summary>
+    [JsonPropertyName("external_id")]
+    public string? ExternalId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
+
+    /// <summary>Phone number in E.164 format, such as `+34612345678`.</summary>
+    [JsonPropertyName("phone")]
+    public string? Phone { get; set; }
+
+    /// <summary>Email address.</summary>
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+
+    /// <summary>Your data for the agent for this person, checked against its `context_schema`.</summary>
+    [JsonPropertyName("context")]
+    public Dictionary<string, JsonElement>? Context { get; set; }
+}
+
+public sealed class CampaignCreate
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    /// <summary>Id of the agent, prefixed `agt_`.</summary>
+    [JsonPropertyName("agent")]
+    public string? Agent { get; set; }
+
+    /// <summary>The order to try for every recipient, with the same rules as Create a conversation.</summary>
+    [JsonPropertyName("channels")]
+    public List<string>? Channels { get; set; }
+
+    /// <summary>Not before this time, and always inside contact hours in live mode. Default now. At most 90 days ahead.</summary>
+    [JsonPropertyName("start_at")]
+    public string? StartAt { get; set; }
+
+    /// <summary>Conversations started per minute.</summary>
+    [JsonPropertyName("rate")]
+    public long? Rate { get; set; }
+
+    /// <summary>Who to contact, in order.</summary>
+    [JsonPropertyName("recipients")]
+    public List<CampaignRecipientInput>? Recipients { get; set; }
+}
+
+/// <summary>A page of a list. Keep paginating with `starting_after` while `has_more` is `true`.</summary>
+public sealed class CampaignList
+{
+    [JsonPropertyName("object")]
+    public string? Object { get; set; }
+
+    /// <summary>Path of the list, such as `/v1/conversations`.</summary>
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    /// <summary>Whether there are more items after this page.</summary>
+    [JsonPropertyName("has_more")]
+    public bool? HasMore { get; set; }
+
+    [JsonPropertyName("data")]
+    public List<Campaign>? Data { get; set; }
+}
+
+/// <summary>One row of a campaign. Once it has started it shows the contact's current details, which are `null` after the contact is erased; before, what you sent (or the contact's details when sent as a contact id).</summary>
+public sealed class CampaignRecipient
+{
+    [JsonPropertyName("object")]
+    public string? Object { get; set; }
+
+    /// <summary>Position in the campaign, from 1.</summary>
+    [JsonPropertyName("row")]
+    public long? Row { get; set; }
+
+    /// <summary>- `pending`: not started yet. - `launched`: its conversation was started. - `failed`: it could not start; see `error`. - `skipped`: the campaign was cancelled before it started.</summary>
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("phone")]
+    public string? Phone { get; set; }
+
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+
+    [JsonPropertyName("external_id")]
+    public string? ExternalId { get; set; }
+
+    /// <summary>Id of the contact, prefixed `ctc_`. `null` until the row starts, and after the contact is erased.</summary>
+    [JsonPropertyName("contact")]
+    public string? Contact { get; set; }
+
+    /// <summary>Why the row failed. `null` otherwise.</summary>
+    [JsonPropertyName("error")]
+    public CampaignRecipientError? Error { get; set; }
+
+    /// <summary>The conversation the row started. `null` until then.</summary>
+    [JsonPropertyName("conversation")]
+    public CampaignRecipientConversation? Conversation { get; set; }
+}
+
+/// <summary>Why the row failed. `null` otherwise.</summary>
+public sealed class CampaignRecipientError
+{
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
+}
+
+/// <summary>The conversation the row started. `null` until then.</summary>
+public sealed class CampaignRecipientConversation
+{
+    /// <summary>Id of the conversation, prefixed `cnv_`.</summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    /// <summary>- `scheduled`: waiting for `start_at` and your contact hours. - `in_progress`: the agent is contacting the contact, or talking to them. - `ended`: the conversation ended, with its `outcome` (which can be `null`). - `no_reply`: every channel was tried and the contact did not engage. - `cancelled`: you cancelled it. - `failed`: it could not go on (the balance, or no channel could be used).</summary>
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    /// <summary>The channel in use, or the last one used.</summary>
+    [JsonPropertyName("channel")]
+    public string? Channel { get; set; }
+
+    /// <summary>The outcome code the agent ended with. `null` until then.</summary>
+    [JsonPropertyName("outcome")]
+    public CampaignRecipientConversationOutcome? Outcome { get; set; }
+}
+
+/// <summary>The outcome code the agent ended with. `null` until then.</summary>
+public sealed class CampaignRecipientConversationOutcome
+{
+    [JsonPropertyName("code")]
+    public string? Code { get; set; }
+}
+
+/// <summary>A page of a list. Keep paginating with `starting_after` while `has_more` is `true`.</summary>
+public sealed class CampaignRecipientList
+{
+    [JsonPropertyName("object")]
+    public string? Object { get; set; }
+
+    /// <summary>Path of the list, such as `/v1/conversations`.</summary>
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    /// <summary>Whether there are more items after this page.</summary>
+    [JsonPropertyName("has_more")]
+    public bool? HasMore { get; set; }
+
+    [JsonPropertyName("data")]
+    public List<CampaignRecipient>? Data { get; set; }
 }
 
 /// <summary>One thing the contact or the agent said or wrote.</summary>
@@ -1609,6 +1899,10 @@ public sealed class BalanceTransaction
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 
+    /// <summary>The account that spent it; `null` for the organization's top-ups.</summary>
+    [JsonPropertyName("account")]
+    public string? Account { get; set; }
+
     /// <summary>Channel charged, on `usage`.</summary>
     [JsonPropertyName("channel")]
     public string? Channel { get; set; }
@@ -1729,6 +2023,10 @@ public sealed class AnalyticsSummary
     [JsonPropertyName("transferred")]
     public long? Transferred { get; set; }
 
+    /// <summary>Calls either way (one conversation may make several), by the day of their conversation.</summary>
+    [JsonPropertyName("calls")]
+    public AnalyticsSummaryCalls? Calls { get; set; }
+
     /// <summary>Conversations by the last channel used.</summary>
     [JsonPropertyName("by_channel")]
     public AnalyticsSummaryByChannel? ByChannel { get; set; }
@@ -1778,6 +2076,38 @@ public sealed class AnalyticsSummaryStatuses
 
     [JsonPropertyName("failed")]
     public long? Failed { get; set; }
+}
+
+/// <summary>Calls either way (one conversation may make several), by the day of their conversation.</summary>
+public sealed class AnalyticsSummaryCalls
+{
+    /// <summary>Calls dialled or received.</summary>
+    [JsonPropertyName("placed")]
+    public long? Placed { get; set; }
+
+    /// <summary>Calls a person picked up (not a voicemail).</summary>
+    [JsonPropertyName("answered")]
+    public long? Answered { get; set; }
+
+    /// <summary>Calls the agent took and spoke on.</summary>
+    [JsonPropertyName("taken")]
+    public long? Taken { get; set; }
+
+    /// <summary>Calls nobody picked up, or that were busy or rejected.</summary>
+    [JsonPropertyName("no_answer")]
+    public long? NoAnswer { get; set; }
+
+    /// <summary>Calls a voicemail picked up.</summary>
+    [JsonPropertyName("voicemail")]
+    public long? Voicemail { get; set; }
+
+    /// <summary>Calls that could not be placed or broke.</summary>
+    [JsonPropertyName("failed")]
+    public long? Failed { get; set; }
+
+    /// <summary>Average milliseconds from the pick-up to the agent speaking. `null` without answered calls.</summary>
+    [JsonPropertyName("first_words_ms")]
+    public long? FirstWordsMs { get; set; }
 }
 
 /// <summary>Conversations by the last channel used.</summary>
@@ -1888,6 +2218,10 @@ public sealed class AgentUpdateOptions
     /// <summary>A voice of the catalog, or `null` for the agent's default.</summary>
     [JsonPropertyName("voice")]
     public string? Voice { get; set; }
+
+    /// <summary>One of the company's email profiles, or `null` for Yesly's sender.</summary>
+    [JsonPropertyName("email_profile")]
+    public string? EmailProfile { get; set; }
 
     /// <summary>Only the limits sent change.</summary>
     [JsonPropertyName("limits")]
@@ -2068,6 +2402,10 @@ public sealed class ConversationListOptions
     [JsonPropertyName("to")]
     public string? To { get; set; }
 
+    /// <summary>`desc` (default) lists the newest first; `asc` the oldest. `starting_after` continues in the same order.</summary>
+    [JsonPropertyName("order")]
+    public string? Order { get; set; }
+
     /// <summary>Between 1 and 100. Default 20.</summary>
     [JsonPropertyName("limit")]
     public long? Limit { get; set; }
@@ -2107,6 +2445,65 @@ public sealed class ConversationRecordingOptions
     /// <summary>The call, prefixed `msg_`.</summary>
     [JsonPropertyName("message")]
     public string? Message { get; set; }
+}
+
+/// <summary>Parameters of `GET /campaigns`.</summary>
+public sealed class CampaignListOptions
+{
+    /// <summary>Only in this status.</summary>
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    /// <summary>Between 1 and 100. Default 20.</summary>
+    [JsonPropertyName("limit")]
+    public long? Limit { get; set; }
+
+    /// <summary>Cursor: the id of the last item of the previous page.</summary>
+    [JsonPropertyName("starting_after")]
+    public string? StartingAfter { get; set; }
+}
+
+/// <summary>Parameters of `POST /campaigns`.</summary>
+public sealed class CampaignCreateOptions
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    /// <summary>Id of the agent, prefixed `agt_`.</summary>
+    [JsonPropertyName("agent")]
+    public string? Agent { get; set; }
+
+    /// <summary>The order to try for every recipient, with the same rules as Create a conversation.</summary>
+    [JsonPropertyName("channels")]
+    public List<string>? Channels { get; set; }
+
+    /// <summary>Not before this time, and always inside contact hours in live mode. Default now. At most 90 days ahead.</summary>
+    [JsonPropertyName("start_at")]
+    public string? StartAt { get; set; }
+
+    /// <summary>Conversations started per minute.</summary>
+    [JsonPropertyName("rate")]
+    public long? Rate { get; set; }
+
+    /// <summary>Who to contact, in order.</summary>
+    [JsonPropertyName("recipients")]
+    public List<CampaignRecipientInput>? Recipients { get; set; }
+}
+
+/// <summary>Parameters of `GET /campaigns/{id}/recipients`.</summary>
+public sealed class CampaignListRecipientsOptions
+{
+    /// <summary>Only rows in this status.</summary>
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    /// <summary>Between 1 and 100. Default 50.</summary>
+    [JsonPropertyName("limit")]
+    public long? Limit { get; set; }
+
+    /// <summary>Cursor: the row number of the last item of the previous page.</summary>
+    [JsonPropertyName("starting_after")]
+    public long? StartingAfter { get; set; }
 }
 
 /// <summary>Parameters of `GET /messages`.</summary>
